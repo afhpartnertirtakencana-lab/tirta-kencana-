@@ -1195,6 +1195,17 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
   </div>
 </div>
 
+<!-- GAS URL QUICK SETUP - muncul di atas semua konten -->
+<div id="gas-url-bar" style="display:none;position:fixed;top:var(--top-h);left:0;right:0;z-index:700;background:linear-gradient(135deg,#DC2626,#B91C1C);padding:10px 16px;box-shadow:0 4px 16px rgba(220,38,38,.3)">
+  <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:#fff;font-size:13px;font-weight:700;flex-shrink:0">⚙️ GAS URL belum diset:</span>
+    <input id="gas-url-quick" type="text" placeholder="Paste URL https://script.google.com/macros/s/.../exec" 
+      style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:none;font-size:12px;font-family:monospace;outline:none;min-height:36px">
+    <button onclick="saveGasUrlQuick()" style="background:#fff;color:#DC2626;border:none;border-radius:8px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;min-height:36px">💾 Simpan</button>
+    <button onclick="document.getElementById('gas-url-bar').style.display='none'" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;min-height:36px">✕</button>
+  </div>
+</div>
+
 <!-- DRAWER OVERLAY -->
 <div id="drawer-overlay" onclick="closeSidebar()"></div>
 
@@ -1214,7 +1225,11 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
       <div class="nav-item" data-page="setoran" onclick="navTo('setoran');closeSidebar()"><span class="icon">💰</span> Setoran</div>
     </div>
     <div class="nav-section">
-      <div class="nav-label">Master Data</div>
+      <div class="nav-label">Master Stock</div>
+      <div class="nav-item" data-page="stock" onclick="navTo('stock');closeSidebar()"><span class="icon">📦</span> Master Stock</div>
+      <div class="nav-item" data-page="input-barang" onclick="navTo('input-barang');closeSidebar()"><span class="icon">📥</span> Input Barang</div>
+      <div class="nav-item" data-page="laporan-stock" onclick="navTo('laporan-stock');closeSidebar()"><span class="icon">📊</span> Lap. Stock</div>
+    </div>
       <div class="nav-item" data-page="produk" onclick="navTo('produk');closeSidebar()"><span class="icon">📦</span> Produk</div>
       <div class="nav-item" data-page="pelanggan" onclick="navTo('pelanggan');closeSidebar()"><span class="icon">👥</span> Pelanggan</div>
       <div class="nav-item" data-page="settings" onclick="navTo('settings');closeSidebar()"><span class="icon">⚙️</span> Pengaturan</div>
@@ -1372,6 +1387,113 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
         </div>
       </div>
       <div id="setoran-content"><div class="empty-state"><div class="icon">💰</div><div>Pilih tanggal &amp; sales lalu klik Tampilkan</div></div></div>
+    </div>
+
+    <!-- MASTER STOCK -->
+    <div id="page-stock" class="page hidden">
+      <div class="page-header">
+        <div><h1>📦 Master Stock</h1><div class="subtitle">Kelola stock awal per produk</div></div>
+        <div class="page-header-actions">
+          <input type="date" id="stock-tgl" class="form-control" style="width:155px">
+          <button class="btn btn-secondary btn-sm" onclick="loadStock()">🔄 Refresh</button>
+          <button class="btn btn-primary btn-sm" onclick="saveStockAwal()">💾 Simpan Stock Awal</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;padding:12px 16px;background:var(--accent-light);border-color:var(--accent)">
+        <div style="font-size:13px;color:var(--accent)">
+          <b>ℹ️ Cara pakai:</b> Pilih tanggal → isi Stock Awal tiap produk → Simpan. 
+          Stock Masuk diisi dari menu <b>Input Barang</b>. Stock Keluar otomatis dari penjualan.
+          Stock Akhir hari ini menjadi Stock Awal esok hari.
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>SKU</th><th>Nama Produk</th><th>Satuan</th><th>Stock Awal</th><th>Masuk</th><th>Keluar (Jual)</th><th>Stock Akhir</th></tr></thead>
+            <tbody id="stock-tbody"><tr><td colspan="7" class="loading">Pilih tanggal lalu klik Refresh</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT BARANG -->
+    <div id="page-input-barang" class="page hidden">
+      <div class="page-header">
+        <div><h1>📥 Input Barang</h1><div class="subtitle">Catat barang masuk ke stock</div></div>
+      </div>
+      <!-- Tab pilihan -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="tab-ssid" class="btn btn-primary btn-sm" onclick="switchTabInput('ssid')">📋 Tarik dari Spreadsheet</button>
+        <button id="tab-manual" class="btn btn-secondary btn-sm" onclick="switchTabInput('manual')">✏️ Input Manual</button>
+      </div>
+
+      <!-- Tab SSID -->
+      <div id="tab-content-ssid">
+        <div class="card" style="margin-bottom:14px">
+          <h3 style="font-size:14px;font-weight:800;margin-bottom:14px">📋 Tarik Data dari Spreadsheet Lain</h3>
+          <div class="form-group">
+            <label class="form-label">Spreadsheet ID (SSID)</label>
+            <input id="inp-ssid" class="form-control" placeholder="Paste Spreadsheet ID di sini" style="font-family:var(--mono);font-size:13px">
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">ID ada di URL spreadsheet: docs.google.com/spreadsheets/d/<b>[ID INI]</b>/edit</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nama Sheet (opsional)</label>
+            <input id="inp-ssid-sheet" class="form-control" placeholder="Contoh: Sheet1 (kosongkan = sheet pertama)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Filter Kolom Status = "Kiriman" (opsional)</label>
+            <input id="inp-ssid-status-col" class="form-control" placeholder="Nama kolom status, misal: Status">
+          </div>
+          <button class="btn btn-primary" onclick="tarikDataSSID()">📥 Tarik Data</button>
+          <div id="ssid-preview" style="margin-top:16px"></div>
+        </div>
+      </div>
+
+      <!-- Tab Manual -->
+      <div id="tab-content-manual" class="hidden">
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:800;margin-bottom:14px">✏️ Input Barang Manual</h3>
+          <div class="grid grid-2" style="gap:14px;margin-bottom:14px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Tanggal</label>
+              <input type="date" id="inp-barang-tgl" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Keterangan</label>
+              <input id="inp-barang-ket" class="form-control" placeholder="Supplier / keterangan">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:13px;font-weight:800">Item Barang Masuk</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-scan btn-sm" onclick="openScanner('barang')">📷 Scan</button>
+              <button class="btn btn-secondary btn-sm" onclick="addBarangRow()">+ Tambah Baris</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);display:grid;grid-template-columns:1fr 1fr 80px 32px;gap:6px;padding-bottom:6px;border-bottom:1px solid var(--border);font-weight:700;text-transform:uppercase;letter-spacing:.5px">
+            <span>SKU / Produk</span><span>Nama</span><span>Qty</span><span></span>
+          </div>
+          <div id="barang-items-container"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px">
+            <button class="btn btn-secondary" style="flex:1" onclick="resetInputBarang()">Reset</button>
+            <button class="btn btn-primary" style="flex:2" onclick="submitInputBarang()">💾 Simpan Input Barang</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAPORAN STOCK -->
+    <div id="page-laporan-stock" class="page hidden">
+      <div class="page-header">
+        <div><h1>📊 Laporan Stock</h1><div class="subtitle">Stock harian per produk</div></div>
+        <div class="page-header-actions">
+          <input type="date" id="lap-stock-tgl" class="form-control" style="width:155px">
+          <button class="btn btn-primary" onclick="loadLaporanStock()">📊 Tampilkan</button>
+        </div>
+      </div>
+      <div id="laporan-stock-content">
+        <div class="empty-state"><div class="icon">📊</div><div>Pilih tanggal lalu klik Tampilkan</div></div>
+      </div>
     </div>
 
     <!-- PRODUK -->
@@ -1624,6 +1746,53 @@ function saveGasUrl() {
   toast('✅ GAS URL tersimpan', 'success');
   document.getElementById('gas-status').innerHTML =
     '<span style="color:#16A34A">✅ URL tersimpan. Klik Test Koneksi untuk verifikasi.</span>';
+  document.getElementById('gas-url-bar').style.display = 'none';
+}
+
+function saveGasUrlFromDash() {
+  var url = (document.getElementById('dash-gas-url').value || '').trim();
+  if (!url) { toast('URL tidak boleh kosong!', 'error'); return; }
+  if (!url.startsWith('https://script.google.com/macros/s/')) {
+    toast('URL tidak valid!', 'error'); return;
+  }
+  localStorage.setItem('sp_gas_url', url);
+  var qEl = document.getElementById('gas-url-quick');
+  if (qEl) qEl.value = url;
+  var sEl = document.getElementById('set-gas-url');
+  if (sEl) sEl.value = url;
+  checkGasUrlBar();
+  toast('✅ GAS URL tersimpan! Memuat dashboard...', 'success');
+  setTimeout(function() { loadDashboard(); }, 800);
+}
+
+function saveGasUrlQuick() {
+  var url = (document.getElementById('gas-url-quick').value || '').trim();
+  if (!url) { toast('URL tidak boleh kosong!', 'error'); return; }
+  if (!url.startsWith('https://script.google.com/macros/s/')) {
+    toast('URL tidak valid!', 'error'); return;
+  }
+  localStorage.setItem('sp_gas_url', url);
+  // Sync ke field settings juga
+  var settingsEl = document.getElementById('set-gas-url');
+  if (settingsEl) settingsEl.value = url;
+  document.getElementById('gas-url-bar').style.display = 'none';
+  toast('✅ GAS URL tersimpan!', 'success');
+  // Reload halaman aktif
+  loadDashboard();
+}
+
+function checkGasUrlBar() {
+  var url = getGasUrl();
+  var bar = document.getElementById('gas-url-bar');
+  if (!bar) return;
+  if (!url) {
+    bar.style.display = 'block';
+    document.getElementById('gas-url-quick').value = '';
+  } else {
+    bar.style.display = 'none';
+    var qi = document.getElementById('gas-url-quick');
+    if (qi) qi.value = url;
+  }
 }
 
 // ── STATE ────────────────────────────────────────────────
@@ -1715,12 +1884,15 @@ function navTo(page) {
   var el = document.getElementById('page-' + page);
   if (el) el.classList.remove('hidden');
   document.querySelectorAll('[data-page="' + page + '"]').forEach(function(n) { n.classList.add('active'); });
-  if (page === 'dashboard') loadDashboard();
+  if (page === 'dashboard') { checkGasUrlBar(); loadDashboard(); }
   if (page === 'transaksi') loadTrxList();
   if (page === 'new-trx') initNewTrx();
   if (page === 'laporan') initLaporan();
   if (page === 'rekap') initRekap();
   if (page === 'setoran') initSetoran();
+  if (page === 'stock') initStock();
+  if (page === 'input-barang') initInputBarang();
+  if (page === 'laporan-stock') initLaporanStock();
   if (page === 'produk') loadProducts();
   if (page === 'pelanggan') loadCustomers();
   if (page === 'settings') loadSettingsPage();
@@ -1851,6 +2023,24 @@ function setBarcodePreview(dataUrl) {
 // ── DASHBOARD ────────────────────────────────────────────
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
+  if (!c) return;
+
+  // Cek GAS URL dulu
+  var gasUrl = getGasUrl();
+  if (!gasUrl) {
+    c.innerHTML = '<div class="card" style="border-color:var(--accent);text-align:center;padding:40px 20px">'
+      + '<div style="font-size:48px;margin-bottom:16px">🔗</div>'
+      + '<div style="font-size:17px;font-weight:800;margin-bottom:8px">GAS URL Belum Diset</div>'
+      + '<div style="color:var(--text2);font-size:14px;margin-bottom:20px">Masukkan URL Google Apps Script untuk mulai menggunakan aplikasi</div>'
+      + '<div style="display:flex;gap:8px;max-width:500px;margin:0 auto;flex-wrap:wrap">'
+      + '<input id="dash-gas-url" type="text" class="form-control" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;font-size:12px;font-family:var(--mono)">'
+      + '<button class="btn btn-primary" onclick="saveGasUrlFromDash()">💾 Simpan & Mulai</button>'
+      + '</div>'
+      + '</div>';
+    checkGasUrlBar();
+    return;
+  }
+
   c.innerHTML = '<div class="loading">Memuat dashboard</div>';
   gasCall('getDashboardData', []).then(function(data) {
     _dashItems = {};
@@ -2756,6 +2946,7 @@ function saveSettings() {
   try { localStorage.setItem('sp_settings', JSON.stringify(cfg)); } catch(e) {}
   settings = cfg;
   updateBrandLogo();
+  checkGasUrlBar();
 
   gasCall('saveSettings', [cfg]).then(function() {
     toast('✅ Pengaturan tersimpan');
@@ -2824,6 +3015,7 @@ window.addEventListener('load', function() {
   } catch(e) {}
 
   updateBrandLogo();
+  checkGasUrlBar();
 });
 
 // ══════════════════════════════════════════════════════
@@ -3185,6 +3377,386 @@ function printSetoran() {
   win.document.write('<div class="row total-row"><span class="label">SELISIH</span><span class="val" style="color:'+(parseFloat(gd('selisih'))<0?'#DC2626':'#16A34A')+'">'+gd('selisih')+'</span></div>');
   win.document.write('<script>window.onload=function(){window.print();}<\/script></body></html>');
   win.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+//  MASTER STOCK
+// ══════════════════════════════════════════════════════
+var _stockData  = {}; // { sku: { awal, masuk, keluar, akhir } }
+var _stockCache = {}; // localStorage key: 'sp_stock_YYYY-MM-DD'
+
+function stockKey(tgl) { return 'sp_stock_' + tgl; }
+
+function loadStockFromCache(tgl) {
+  try { return JSON.parse(localStorage.getItem(stockKey(tgl)) || '{}'); } catch(e) { return {}; }
+}
+function saveStockToCache(tgl, data) {
+  try { localStorage.setItem(stockKey(tgl), JSON.stringify(data)); } catch(e) {}
+}
+
+function initStock() {
+  var tgl = document.getElementById('stock-tgl').value;
+  if (!tgl) {
+    document.getElementById('stock-tgl').value = new Date().toISOString().slice(0,10);
+  }
+}
+
+function loadStock() {
+  var tgl = document.getElementById('stock-tgl').value;
+  if (!tgl) return toast('Pilih tanggal dulu!','error');
+  var tb  = document.getElementById('stock-tbody');
+  tb.innerHTML = '<tr><td colspan="7" class="loading">Memuat stock</td></tr>';
+
+  // Load produk + penjualan hari ini
+  Promise.all([
+    gasCall('getProducts', []),
+    gasCall('getTrxList',  [])
+  ]).then(function(results) {
+    var products = results[0] || [];
+    var trxList  = results[1] || [];
+
+    // Hitung keluar (penjualan) per SKU pada tanggal ini
+    var keluarMap = {};
+    var trxToday  = trxList.filter(function(t){ return (t.tgl||'').substring(0,10) === tgl; });
+
+    // Ambil detail semua transaksi hari ini
+    var detailPromises = trxToday.map(function(t){ return gasCall('getDetailByTrx',[t.id]); });
+    Promise.all(detailPromises).then(function(allDetails) {
+      allDetails.forEach(function(items) {
+        (items||[]).forEach(function(it) {
+          var sk = it.sku||'';
+          if (!sk) return;
+          keluarMap[sk] = (keluarMap[sk]||0) + (Number(it.qty)||0);
+        });
+      });
+
+      // Load stock awal dari cache (atau stock akhir kemarin)
+      var stockCache = loadStockFromCache(tgl);
+      // Cek stock akhir kemarin
+      var yesterday = new Date(tgl); yesterday.setDate(yesterday.getDate()-1);
+      var yKey      = yesterday.toISOString().slice(0,10);
+      var yCache    = loadStockFromCache(yKey);
+
+      // Load input barang (masuk) dari cache
+      var masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}');
+
+      _stockData = {};
+      products.forEach(function(p) {
+        var sk    = p.sku;
+        // Stock awal: dari cache hari ini, atau akhir kemarin, atau 0
+        var awal  = stockCache[sk] !== undefined ? Number(stockCache[sk]) :
+                   (yCache[sk+'_akhir'] !== undefined ? Number(yCache[sk+'_akhir']) : 0);
+        var masuk = masuKCache[sk] || 0;
+        var keluar = keluarMap[sk] || 0;
+        var akhir  = awal + masuk - keluar;
+        _stockData[sk] = { awal:awal, masuk:masuk, keluar:keluar, akhir:akhir, nama:p.nama, satuan:p.satuan };
+      });
+
+      renderStockTable(tgl);
+    });
+  }).catch(function(err){
+    tb.innerHTML = '<tr><td colspan="7" style="color:#DC2626;padding:24px">' + esc(err.message) + '</td></tr>';
+  });
+}
+
+function renderStockTable(tgl) {
+  var tb = document.getElementById('stock-tbody');
+  var skus = Object.keys(_stockData);
+  if (!skus.length) { tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Belum ada produk</td></tr>'; return; }
+  tb.innerHTML = skus.map(function(sk) {
+    var d = _stockData[sk];
+    var akhirColor = d.akhir < 0 ? 'color:#DC2626;font-weight:800' : 'color:var(--accent);font-weight:700';
+    return '<tr>'
+      + '<td style="font-family:var(--mono);font-weight:600;font-size:12px">' + esc(sk) + '</td>'
+      + '<td class="fw-bold">' + esc(d.nama||'') + '</td>'
+      + '<td>' + esc(d.satuan||'') + '</td>'
+      + '<td><input type="number" min="0" value="' + d.awal + '" data-sku="' + esc(sk) + '" class="form-control stock-awal-inp" style="width:90px;min-height:38px;text-align:center" oninput="recalcStockRow(this)"></td>'
+      + '<td style="font-family:var(--mono);color:#16A34A;font-weight:700" id="stm-'+esc(sk)+'">' + d.masuk + '</td>'
+      + '<td style="font-family:var(--mono);color:#DC2626;font-weight:700" id="stk-'+esc(sk)+'">' + d.keluar + '</td>'
+      + '<td style="font-family:var(--mono);' + akhirColor + '" id="sta-'+esc(sk)+'">' + d.akhir + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function recalcStockRow(inp) {
+  var sk   = inp.dataset.sku;
+  if (!_stockData[sk]) return;
+  var awal = parseFloat(inp.value)||0;
+  _stockData[sk].awal  = awal;
+  _stockData[sk].akhir = awal + _stockData[sk].masuk - _stockData[sk].keluar;
+  var el = document.getElementById('sta-'+sk);
+  if (el) {
+    el.textContent = _stockData[sk].akhir;
+    el.style.color = _stockData[sk].akhir < 0 ? '#DC2626' : 'var(--accent)';
+  }
+}
+
+function saveStockAwal() {
+  var tgl = document.getElementById('stock-tgl').value;
+  if (!tgl) return toast('Pilih tanggal dulu!','error');
+  // Kumpulkan nilai stock awal dari input
+  var inputs = document.querySelectorAll('.stock-awal-inp');
+  var awalCache = {};
+  inputs.forEach(function(inp) {
+    var sk = inp.dataset.sku;
+    awalCache[sk] = parseFloat(inp.value)||0;
+    if (_stockData[sk]) _stockData[sk].awal = awalCache[sk];
+  });
+  // Simpan stock awal ke cache
+  saveStockToCache(tgl, awalCache);
+  // Simpan stock akhir juga (untuk jadi awal besok)
+  var akhirCache = {};
+  Object.keys(_stockData).forEach(function(sk) {
+    akhirCache[sk+'_akhir'] = _stockData[sk].akhir;
+  });
+  saveStockToCache(tgl, Object.assign({}, awalCache, akhirCache));
+  // Simpan ke GAS
+  gasCall('saveStockAwal', [{ tgl:tgl, data: Object.assign({}, awalCache, akhirCache) }])
+    .then(function(){ toast('✅ Stock awal tersimpan','success'); })
+    .catch(function(){ toast('Tersimpan lokal (GAS gagal)','error'); });
+  toast('✅ Stock awal tersimpan','success');
+  renderStockTable(tgl);
+}
+
+// ══════════════════════════════════════════════════════
+//  INPUT BARANG
+// ══════════════════════════════════════════════════════
+var _barangItemIdx = 0;
+
+function initInputBarang() {
+  document.getElementById('inp-barang-tgl').value = new Date().toISOString().slice(0,10);
+  switchTabInput('ssid');
+  if (!document.querySelector('#barang-items-container .barang-row')) {
+    resetInputBarang();
+  }
+}
+
+function switchTabInput(tab) {
+  document.getElementById('tab-content-ssid').classList.toggle('hidden', tab !== 'ssid');
+  document.getElementById('tab-content-manual').classList.toggle('hidden', tab !== 'manual');
+  document.getElementById('tab-ssid').className   = 'btn btn-sm ' + (tab==='ssid'   ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('tab-manual').className = 'btn btn-sm ' + (tab==='manual' ? 'btn-primary' : 'btn-secondary');
+}
+
+function tarikDataSSID() {
+  var ssid    = document.getElementById('inp-ssid').value.trim();
+  var sheet   = document.getElementById('inp-ssid-sheet').value.trim();
+  var statCol = document.getElementById('inp-ssid-status-col').value.trim();
+  if (!ssid) return toast('Masukkan Spreadsheet ID dulu!','error');
+  var prev = document.getElementById('ssid-preview');
+  prev.innerHTML = '<div class="loading">Mengambil data dari spreadsheet</div>';
+  gasCall('tarikSSID', [ssid, sheet, statCol]).then(function(data) {
+    if (!data || !data.rows || !data.rows.length) {
+      prev.innerHTML = '<div class="empty-state" style="padding:24px"><div class="icon">📋</div><div>Tidak ada data ditemukan (status = Kiriman)</div></div>';
+      return;
+    }
+    // Tampilkan preview tabel
+    var headers = data.headers || [];
+    var html = '<div class="card" style="padding:0;overflow:hidden;margin-top:12px">'
+      + '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800">📋 Preview Data ('+data.rows.length+' baris)</div>'
+      + '<div class="table-wrap"><table><thead><tr>'
+      + headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')
+      + '</tr></thead><tbody>'
+      + data.rows.slice(0,20).map(function(r){
+          return '<tr>'+r.map(function(c){ return '<td>'+esc(String(c||'')).substring(0,40)+'</td>'; }).join('')+'</tr>';
+        }).join('')
+      + (data.rows.length > 20 ? '<tr><td colspan="'+headers.length+'" class="text-center text-muted" style="padding:10px">...dan '+(data.rows.length-20)+' baris lainnya</td></tr>' : '')
+      + '</tbody></table></div>'
+      + '<div style="padding:12px 16px;border-top:1px solid var(--border)">'
+      + '<div style="margin-bottom:10px"><label class="form-label">Pilih kolom SKU</label>'
+      + '<select id="map-sku" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
+      + '<div style="margin-bottom:10px"><label class="form-label">Pilih kolom Nama</label>'
+      + '<select id="map-nama" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
+      + '<div style="margin-bottom:14px"><label class="form-label">Pilih kolom Qty</label>'
+      + '<select id="map-qty" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
+      + '<button class="btn btn-primary" onclick="importSSIDToBarang('+JSON.stringify(data).replace(/</g,'\\x3c')+')">✅ Import ke Input Barang</button>'
+      + '</div></div>';
+    prev.innerHTML = html;
+    // Auto-select kolom yang cocok
+    headers.forEach(function(h,i) {
+      var hl = h.toLowerCase();
+      if (hl.includes('sku') || hl.includes('kode')) document.getElementById('map-sku').value = i;
+      if (hl.includes('nama') || hl.includes('produk')) document.getElementById('map-nama').value = i;
+      if (hl.includes('qty') || hl.includes('jumlah') || hl.includes('pcs')) document.getElementById('map-qty').value = i;
+    });
+  }).catch(function(err) {
+    prev.innerHTML = '<div class="card" style="border-color:#DC2626;padding:20px;color:#DC2626">❌ '+esc(err.message)+'</div>';
+  });
+}
+
+function importSSIDToBarang(data) {
+  var colSku  = parseInt(document.getElementById('map-sku').value)||0;
+  var colNama = parseInt(document.getElementById('map-nama').value)||1;
+  var colQty  = parseInt(document.getElementById('map-qty').value)||2;
+  // Switch ke tab manual dan isi rows
+  switchTabInput('manual');
+  document.getElementById('barang-items-container').innerHTML = '';
+  _barangItemIdx = 0;
+  data.rows.forEach(function(r) {
+    var sku  = String(r[colSku]||'').trim();
+    var nama = String(r[colNama]||'').trim();
+    var qty  = Number(r[colQty])||0;
+    if (!sku && !nama) return;
+    addBarangRow(sku, nama, qty);
+  });
+  toast('✅ '+data.rows.length+' item diimport','success');
+  document.getElementById('ssid-preview').innerHTML = '';
+}
+
+function addBarangRow(skuVal, namaVal, qtyVal) {
+  var idx = _barangItemIdx++;
+  var row = document.createElement('div');
+  row.className = 'barang-row';
+  row.dataset.idx = idx;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 32px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)';
+
+  var opts = '<option value="">— pilih —</option>';
+  allProducts.forEach(function(p){ opts += '<option value="'+esc(p.sku)+'">'+esc(p.sku)+' - '+esc(p.nama)+'</option>'; });
+
+  row.innerHTML =
+    '<div style="display:flex;gap:4px">'
+      + '<input class="form-control" data-field="sku" placeholder="SKU" value="'+(skuVal?esc(skuVal):'')+'" style="flex:1;font-size:13px;min-height:38px">'
+      + '<select data-field="skusel" style="width:24px;background:var(--bg2);border:1.5px solid var(--border);border-left:none;font-size:11px;cursor:pointer;border-radius:0 var(--r-sm) var(--r-sm) 0">'+opts+'</select>'
+    + '</div>'
+    + '<input class="form-control" data-field="nama" placeholder="Nama produk" value="'+(namaVal?esc(namaVal):'')+'" style="font-size:13px;min-height:38px">'
+    + '<input class="form-control" data-field="qty" type="number" min="0" value="'+(qtyVal||'')+'" placeholder="0" style="text-align:center;min-height:38px">'
+    + '<button style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;width:32px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:8px" onclick="this.closest(\'.barang-row\').remove()">✕</button>';
+
+  var skuInp = row.querySelector('[data-field="sku"]');
+  var skuSel = row.querySelector('[data-field="skusel"]');
+  skuInp.addEventListener('input', function() {
+    var prod = allProducts.find(function(p){ return p.sku.toLowerCase()===skuInp.value.toLowerCase(); });
+    if (prod) row.querySelector('[data-field="nama"]').value = prod.nama||'';
+  });
+  skuSel.addEventListener('change', function() {
+    var prod = allProducts.find(function(p){ return p.sku === skuSel.value; });
+    if (prod) { skuInp.value = prod.sku; row.querySelector('[data-field="nama"]').value = prod.nama||''; skuSel.value=''; }
+  });
+  document.getElementById('barang-items-container').appendChild(row);
+}
+
+function resetInputBarang() {
+  _barangItemIdx = 0;
+  document.getElementById('barang-items-container').innerHTML = '';
+  document.getElementById('inp-barang-ket').value = '';
+  document.getElementById('inp-barang-tgl').value = new Date().toISOString().slice(0,10);
+  addBarangRow(); addBarangRow(); addBarangRow();
+}
+
+function submitInputBarang() {
+  var tgl = document.getElementById('inp-barang-tgl').value;
+  var ket = document.getElementById('inp-barang-ket').value.trim();
+  if (!tgl) return toast('Pilih tanggal dulu!','error');
+  var rows = document.querySelectorAll('.barang-row');
+  var items = [];
+  rows.forEach(function(r) {
+    var sku  = r.querySelector('[data-field="sku"]').value.trim();
+    var nama = r.querySelector('[data-field="nama"]').value.trim();
+    var qty  = parseFloat(r.querySelector('[data-field="qty"]').value)||0;
+    if (sku && qty > 0) items.push({ sku:sku, nama:nama, qty:qty });
+  });
+  if (!items.length) return toast('Isi minimal 1 item dengan qty > 0!','error');
+  var id = 'INP-' + tgl.replace(/-/g,'') + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+  var data = { id:id, tgl:tgl, ket:ket, items:items };
+  // Simpan ke localStorage per tanggal
+  var key = 'sp_input_barang_'+tgl;
+  var existing = {};
+  try { existing = JSON.parse(localStorage.getItem(key)||'{}'); } catch(e) {}
+  items.forEach(function(it){ existing[it.sku] = (existing[it.sku]||0) + it.qty; });
+  localStorage.setItem(key, JSON.stringify(existing));
+  // Simpan log input barang
+  var logKey = 'sp_input_barang_log';
+  var log = []; try { log = JSON.parse(localStorage.getItem(logKey)||'[]'); } catch(e) {}
+  log.push(data); localStorage.setItem(logKey, JSON.stringify(log));
+  // Simpan ke GAS
+  gasCall('saveInputBarang', [data])
+    .then(function(){ toast('✅ Input barang tersimpan ke Sheets','success'); })
+    .catch(function(){ toast('Tersimpan lokal (GAS gagal)','error'); });
+  toast('✅ '+items.length+' item barang masuk disimpan','success');
+  resetInputBarang();
+}
+
+// ══════════════════════════════════════════════════════
+//  LAPORAN STOCK
+// ══════════════════════════════════════════════════════
+function initLaporanStock() {
+  document.getElementById('lap-stock-tgl').value = new Date().toISOString().slice(0,10);
+}
+
+function loadLaporanStock() {
+  var tgl = document.getElementById('lap-stock-tgl').value;
+  if (!tgl) return toast('Pilih tanggal dulu!','error');
+  var c = document.getElementById('laporan-stock-content');
+  c.innerHTML = '<div class="loading">Memuat laporan stock</div>';
+
+  Promise.all([
+    gasCall('getProducts', []),
+    gasCall('getTrxList',  [])
+  ]).then(function(results) {
+    var products = results[0]||[];
+    var trxList  = results[1]||[];
+    var trxToday = trxList.filter(function(t){ return (t.tgl||'').substring(0,10) === tgl; });
+    var detailPromises = trxToday.map(function(t){ return gasCall('getDetailByTrx',[t.id]); });
+
+    Promise.all(detailPromises).then(function(allDetails) {
+      var keluarMap = {};
+      allDetails.forEach(function(items) {
+        (items||[]).forEach(function(it) {
+          var sk = it.sku||'';
+          if (sk) keluarMap[sk] = (keluarMap[sk]||0) + (Number(it.qty)||0);
+        });
+      });
+
+      var stockCache  = loadStockFromCache(tgl);
+      var yesterday   = new Date(tgl); yesterday.setDate(yesterday.getDate()-1);
+      var yKey        = yesterday.toISOString().slice(0,10);
+      var yCache      = loadStockFromCache(yKey);
+      var masuKCache  = {};
+      try { masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}'); } catch(e) {}
+
+      var html = '<div class="card" style="padding:0;overflow:hidden">'
+        + '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+        + '<div style="font-size:15px;font-weight:800">📊 Stock Harian: ' + fmtDateFull(tgl) + '</div>'
+        + '</div>'
+        + '<div class="table-wrap"><table>'
+        + '<thead><tr><th>SKU</th><th>Nama</th><th>Satuan</th><th style="text-align:center">Stock Awal</th><th style="text-align:center;color:#16A34A">Masuk</th><th style="text-align:center;color:#DC2626">Jual (Keluar)</th><th style="text-align:center;color:var(--accent)">Stock Akhir</th></tr></thead>'
+        + '<tbody>';
+
+      var totalMasuk = 0, totalKeluar = 0;
+      products.forEach(function(p) {
+        var sk     = p.sku;
+        var awal   = stockCache[sk] !== undefined ? Number(stockCache[sk]) :
+                    (yCache[sk+'_akhir'] !== undefined ? Number(yCache[sk+'_akhir']) : 0);
+        var masuk  = masuKCache[sk] || 0;
+        var keluar = keluarMap[sk]  || 0;
+        var akhir  = awal + masuk - keluar;
+        totalMasuk  += masuk;
+        totalKeluar += keluar;
+        var akhirStyle = akhir < 0 ? 'color:#DC2626;font-weight:800' : 'color:var(--accent);font-weight:700';
+        html += '<tr>'
+          + '<td style="font-family:var(--mono);font-weight:600;font-size:12px">'+esc(sk)+'</td>'
+          + '<td class="fw-bold">'+esc(p.nama||'')+'</td>'
+          + '<td>'+esc(p.satuan||'')+'</td>'
+          + '<td style="text-align:center;font-family:var(--mono)">'+awal+'</td>'
+          + '<td style="text-align:center;font-family:var(--mono);color:#16A34A;font-weight:700">'+masuk+'</td>'
+          + '<td style="text-align:center;font-family:var(--mono);color:#DC2626;font-weight:700">'+keluar+'</td>'
+          + '<td style="text-align:center;font-family:var(--mono);'+akhirStyle+'">'+akhir+'</td>'
+          + '</tr>';
+      });
+
+      html += '</tbody><tfoot><tr style="background:var(--bg2)">'
+        + '<td colspan="3" style="font-weight:800;padding:12px 14px">TOTAL</td>'
+        + '<td></td>'
+        + '<td style="text-align:center;font-family:var(--mono);font-weight:800;color:#16A34A">'+totalMasuk+'</td>'
+        + '<td style="text-align:center;font-family:var(--mono);font-weight:800;color:#DC2626">'+totalKeluar+'</td>'
+        + '<td></td>'
+        + '</tr></tfoot></table></div></div>';
+
+      c.innerHTML = html;
+    });
+  }).catch(function(err) {
+    c.innerHTML = '<div class="card" style="border-color:#DC2626;padding:24px;color:#DC2626">'+esc(err.message)+'</div>';
+  });
 }
 
 // ── REKAP & SETORAN ─────────────────────────────────
