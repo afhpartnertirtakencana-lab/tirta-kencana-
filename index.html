@@ -1195,11 +1195,11 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
   </div>
 </div>
 
-<!-- GAS URL QUICK SETUP - muncul di atas semua konten -->
-<div id="gas-url-bar" style="display:none;position:fixed;top:var(--top-h);left:0;right:0;z-index:700;background:linear-gradient(135deg,#DC2626,#B91C1C);padding:10px 16px;box-shadow:0 4px 16px rgba(220,38,38,.3)">
+<!-- GAS URL QUICK SETUP - banner di dalam konten, bukan fixed overlay -->
+<div id="gas-url-bar" style="display:none;background:linear-gradient(135deg,#DC2626,#B91C1C);padding:10px 16px;box-shadow:0 2px 12px rgba(220,38,38,.2);margin-bottom:0">
   <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:#fff;font-size:13px;font-weight:700;flex-shrink:0">⚙️ GAS URL belum diset:</span>
-    <input id="gas-url-quick" type="text" placeholder="Paste URL https://script.google.com/macros/s/.../exec" 
+    <input id="gas-url-quick" type="text" placeholder="Paste URL https://script.google.com/macros/s/.../exec"
       style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:none;font-size:12px;font-family:monospace;outline:none;min-height:36px">
     <button onclick="saveGasUrlQuick()" style="background:#fff;color:#DC2626;border:none;border-radius:8px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;min-height:36px">💾 Simpan</button>
     <button onclick="document.getElementById('gas-url-bar').style.display='none'" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;min-height:36px">✕</button>
@@ -1230,6 +1230,8 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
       <div class="nav-item" data-page="input-barang" onclick="navTo('input-barang');closeSidebar()"><span class="icon">📥</span> Input Barang</div>
       <div class="nav-item" data-page="laporan-stock" onclick="navTo('laporan-stock');closeSidebar()"><span class="icon">📊</span> Lap. Stock</div>
     </div>
+    <div class="nav-section">
+      <div class="nav-label">Master Data</div>
       <div class="nav-item" data-page="produk" onclick="navTo('produk');closeSidebar()"><span class="icon">📦</span> Produk</div>
       <div class="nav-item" data-page="pelanggan" onclick="navTo('pelanggan');closeSidebar()"><span class="icon">👥</span> Pelanggan</div>
       <div class="nav-item" data-page="settings" onclick="navTo('settings');closeSidebar()"><span class="icon">⚙️</span> Pengaturan</div>
@@ -1238,6 +1240,9 @@ body.dark .badge-belum { background: rgba(185,28,28,.18); color: #FCA5A5; }
 
   <!-- MAIN CONTENT -->
   <main id="main">
+
+    <!-- GAS URL BAR - tampil di dalam konten jika URL belum diset -->
+    <div id="gas-url-bar-placeholder"></div>
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page">
@@ -1782,16 +1787,23 @@ function saveGasUrlQuick() {
 }
 
 function checkGasUrlBar() {
-  var url = getGasUrl();
   var bar = document.getElementById('gas-url-bar');
-  if (!bar) return;
+  var ph  = document.getElementById('gas-url-bar-placeholder');
+  var url = getGasUrl();
+  if (!bar || !ph) return;
+
   if (!url) {
+    // Pindahkan bar ke dalam placeholder (di dalam #main)
+    ph.appendChild(bar);
     bar.style.display = 'block';
-    document.getElementById('gas-url-quick').value = '';
+    bar.style.borderRadius = 'var(--r)';
+    bar.style.marginBottom = '16px';
+    var qi = document.getElementById('gas-url-quick');
+    if (qi) qi.value = '';
   } else {
     bar.style.display = 'none';
-    var qi = document.getElementById('gas-url-quick');
-    if (qi) qi.value = url;
+    var qi2 = document.getElementById('gas-url-quick');
+    if (qi2) qi2.value = url;
   }
 }
 
@@ -2071,7 +2083,26 @@ function loadDashboard() {
     c.innerHTML = html;
     setBadge((data.semua && data.semua.count) || 0);
   }).catch(function(err) {
-    c.innerHTML = '<div class="card" style="border-color:#DC2626;text-align:center;padding:48px"><div style="font-size:36px">⚠️</div><div style="margin-top:10px;color:var(--text2)">' + esc(err.message) + '</div></div>';
+    var curUrl = getGasUrl();
+    c.innerHTML = '<div class="card" style="border-left:4px solid #DC2626;padding:24px;max-width:640px">'
+      + '<div style="font-size:22px;margin-bottom:12px">⚠️ Gagal Terhubung ke GAS</div>'
+      + '<div style="color:var(--text2);font-size:13px;margin-bottom:16px"><b>Error:</b> ' + esc(err.message) + '</div>'
+      + '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px">'
+      + '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">URL SAAT INI</div>'
+      + '<div style="font-family:monospace;font-size:11px;word-break:break-all;color:var(--text)">' + esc(curUrl||'(kosong)') + '</div>'
+      + '</div>'
+      + '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">'
+      + '<b>Kemungkinan penyebab:</b><br>'
+      + '① URL salah atau deployment belum aktif<br>'
+      + '② GAS belum di-deploy dengan "Execute as: Me, Access: Anyone"<br>'
+      + '③ Koneksi internet bermasalah'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button class="btn btn-primary" onclick="loadDashboard()">🔄 Coba Lagi</button>'
+      + '<button class="btn btn-secondary" onclick="navTo(\'settings\')">⚙️ Ganti URL GAS</button>'
+      + '<button class="btn btn-ghost btn-sm" onclick="window.open(getGasUrl(),\'_blank\')" style="font-size:12px">🔗 Buka URL di Tab Baru</button>'
+      + '</div>'
+      + '</div>';
   });
 }
 
@@ -3404,76 +3435,116 @@ function initStock() {
 function loadStock() {
   var tgl = document.getElementById('stock-tgl').value;
   if (!tgl) return toast('Pilih tanggal dulu!','error');
-  var tb  = document.getElementById('stock-tbody');
+  var tb = document.getElementById('stock-tbody');
   tb.innerHTML = '<tr><td colspan="7" class="loading">Memuat stock</td></tr>';
 
-  // Load produk + penjualan hari ini
+  // Load produk + stock log dari GAS + transaksi hari ini sekaligus
   Promise.all([
-    gasCall('getProducts', []),
-    gasCall('getTrxList',  [])
+    gasCall('getProducts',  []),
+    gasCall('getStockLog',  [tgl]),
+    gasCall('getTrxList',   [])
   ]).then(function(results) {
     var products = results[0] || [];
-    var trxList  = results[1] || [];
+    var stockLog = results[1] || []; // [{sku, nama, awal, akhir}]
+    var trxList  = results[2] || [];
+
+    // Buat map stock awal dari GAS (prioritas) lalu localStorage
+    var awalMap = {};
+    var cacheLocal = loadStockFromCache(tgl);
+
+    // Stock awal dari GAS StockAwal sheet
+    stockLog.forEach(function(s) {
+      awalMap[s.sku] = Number(s.awal) || 0;
+    });
+
+    // Fallback: stock akhir kemarin → jadi awal hari ini
+    var yesterday = new Date(tgl);
+    yesterday.setDate(yesterday.getDate() - 1);
+    var yTgl = yesterday.toISOString().slice(0,10);
+    var yCache = loadStockFromCache(yTgl);
+    products.forEach(function(p) {
+      if (awalMap[p.sku] === undefined) {
+        // Coba dari cache akhir kemarin
+        if (yCache[p.sku + '_akhir'] !== undefined) {
+          awalMap[p.sku] = Number(yCache[p.sku + '_akhir']) || 0;
+        } else if (cacheLocal[p.sku] !== undefined) {
+          awalMap[p.sku] = Number(cacheLocal[p.sku]) || 0;
+        } else {
+          awalMap[p.sku] = 0;
+        }
+      }
+    });
 
     // Hitung keluar (penjualan) per SKU pada tanggal ini
     var keluarMap = {};
-    var trxToday  = trxList.filter(function(t){ return (t.tgl||'').substring(0,10) === tgl; });
+    var trxToday  = trxList.filter(function(t){
+      return (t.tgl||'').substring(0,10) === tgl;
+    });
 
-    // Ambil detail semua transaksi hari ini
-    var detailPromises = trxToday.map(function(t){ return gasCall('getDetailByTrx',[t.id]); });
+    var detailPromises = trxToday.map(function(t){
+      return gasCall('getDetailByTrx',[t.id]);
+    });
+
     Promise.all(detailPromises).then(function(allDetails) {
       allDetails.forEach(function(items) {
         (items||[]).forEach(function(it) {
           var sk = it.sku||'';
-          if (!sk) return;
-          keluarMap[sk] = (keluarMap[sk]||0) + (Number(it.qty)||0);
+          if (sk) keluarMap[sk] = (keluarMap[sk]||0) + (Number(it.qty)||0);
         });
       });
 
-      // Load stock awal dari cache (atau stock akhir kemarin)
-      var stockCache = loadStockFromCache(tgl);
-      // Cek stock akhir kemarin
-      var yesterday = new Date(tgl); yesterday.setDate(yesterday.getDate()-1);
-      var yKey      = yesterday.toISOString().slice(0,10);
-      var yCache    = loadStockFromCache(yKey);
+      // Load input barang masuk dari localStorage
+      var masuKCache = {};
+      try { masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}'); } catch(e) {}
 
-      // Load input barang (masuk) dari cache
-      var masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}');
-
+      // Build _stockData — urutan SESUAI urutan products dari GAS
       _stockData = {};
       products.forEach(function(p) {
-        var sk    = p.sku;
-        // Stock awal: dari cache hari ini, atau akhir kemarin, atau 0
-        var awal  = stockCache[sk] !== undefined ? Number(stockCache[sk]) :
-                   (yCache[sk+'_akhir'] !== undefined ? Number(yCache[sk+'_akhir']) : 0);
-        var masuk = masuKCache[sk] || 0;
-        var keluar = keluarMap[sk] || 0;
+        var sk     = p.sku;
+        var awal   = awalMap[sk] !== undefined ? awalMap[sk] : 0;
+        var masuk  = masuKCache[sk] || 0;
+        var keluar = keluarMap[sk]  || 0;
         var akhir  = awal + masuk - keluar;
-        _stockData[sk] = { awal:awal, masuk:masuk, keluar:keluar, akhir:akhir, nama:p.nama, satuan:p.satuan };
+        _stockData[sk] = {
+          awal   : awal,
+          masuk  : masuk,
+          keluar : keluar,
+          akhir  : akhir,
+          nama   : p.nama,
+          satuan : p.satuan,
+          _order : products.indexOf(p) // simpan urutan asli
+        };
       });
 
-      renderStockTable(tgl);
+      renderStockTable(tgl, products);
     });
+
   }).catch(function(err){
     tb.innerHTML = '<tr><td colspan="7" style="color:#DC2626;padding:24px">' + esc(err.message) + '</td></tr>';
   });
 }
 
-function renderStockTable(tgl) {
-  var tb = document.getElementById('stock-tbody');
-  var skus = Object.keys(_stockData);
-  if (!skus.length) { tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Belum ada produk</td></tr>'; return; }
+function renderStockTable(tgl, products) {
+  var tb   = document.getElementById('stock-tbody');
+  // Render SESUAI urutan products dari GAS (bukan Object.keys yang acak)
+  var skus = products ? products.map(function(p){ return p.sku; }) : Object.keys(_stockData);
+
+  if (!skus.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Belum ada produk</td></tr>';
+    return;
+  }
   tb.innerHTML = skus.map(function(sk) {
     var d = _stockData[sk];
-    var akhirColor = d.akhir < 0 ? 'color:#DC2626;font-weight:800' : 'color:var(--accent);font-weight:700';
+    if (!d) return '';
+    var akhirColor = d.akhir < 0 ? 'color:#DC2626;font-weight:800' : d.akhir === 0 ? 'color:var(--text3)' : 'color:var(--accent);font-weight:700';
     return '<tr>'
       + '<td style="font-family:var(--mono);font-weight:600;font-size:12px">' + esc(sk) + '</td>'
       + '<td class="fw-bold">' + esc(d.nama||'') + '</td>'
       + '<td>' + esc(d.satuan||'') + '</td>'
       + '<td><input type="number" min="0" value="' + d.awal + '" data-sku="' + esc(sk) + '" class="form-control stock-awal-inp" style="width:90px;min-height:38px;text-align:center" oninput="recalcStockRow(this)"></td>'
-      + '<td style="font-family:var(--mono);color:#16A34A;font-weight:700" id="stm-'+esc(sk)+'">' + d.masuk + '</td>'
-      + '<td style="font-family:var(--mono);color:#DC2626;font-weight:700" id="stk-'+esc(sk)+'">' + d.keluar + '</td>'
-      + '<td style="font-family:var(--mono);' + akhirColor + '" id="sta-'+esc(sk)+'">' + d.akhir + '</td>'
+      + '<td style="font-family:var(--mono);color:#16A34A;font-weight:700;text-align:center" id="stm-'+esc(sk)+'">' + d.masuk + '</td>'
+      + '<td style="font-family:var(--mono);color:#DC2626;font-weight:700;text-align:center" id="stk-'+esc(sk)+'">' + d.keluar + '</td>'
+      + '<td style="font-family:var(--mono);text-align:center;' + akhirColor + '" id="sta-'+esc(sk)+'">' + d.akhir + '</td>'
       + '</tr>';
   }).join('');
 }
@@ -3494,28 +3565,45 @@ function recalcStockRow(inp) {
 function saveStockAwal() {
   var tgl = document.getElementById('stock-tgl').value;
   if (!tgl) return toast('Pilih tanggal dulu!','error');
-  // Kumpulkan nilai stock awal dari input
+
+  // Kumpulkan nilai stock awal dari input fields
   var inputs = document.querySelectorAll('.stock-awal-inp');
-  var awalCache = {};
+  if (!inputs.length) return toast('Load stock dulu sebelum simpan!','error');
+
+  var awalCache   = {};
+  var akhirCache  = {};
+  var gasPayload  = { tgl:tgl, data:{} };
+
   inputs.forEach(function(inp) {
-    var sk = inp.dataset.sku;
-    awalCache[sk] = parseFloat(inp.value)||0;
-    if (_stockData[sk]) _stockData[sk].awal = awalCache[sk];
+    var sk   = inp.dataset.sku;
+    var awal = parseFloat(inp.value)||0;
+    if (_stockData[sk]) _stockData[sk].awal = awal;
+    awalCache[sk] = awal;
+    var akhir = _stockData[sk] ? _stockData[sk].akhir : awal;
+    akhirCache[sk + '_akhir'] = akhir;
+    gasPayload.data[sk]               = awal;
+    gasPayload.data[sk + '_akhir']    = akhir;
   });
-  // Simpan stock awal ke cache
-  saveStockToCache(tgl, awalCache);
-  // Simpan stock akhir juga (untuk jadi awal besok)
-  var akhirCache = {};
-  Object.keys(_stockData).forEach(function(sk) {
-    akhirCache[sk+'_akhir'] = _stockData[sk].akhir;
-  });
-  saveStockToCache(tgl, Object.assign({}, awalCache, akhirCache));
+
+  // Simpan ke localStorage (instant)
+  var combined = Object.assign({}, awalCache, akhirCache);
+  saveStockToCache(tgl, combined);
+
   // Simpan ke GAS
-  gasCall('saveStockAwal', [{ tgl:tgl, data: Object.assign({}, awalCache, akhirCache) }])
-    .then(function(){ toast('✅ Stock awal tersimpan','success'); })
-    .catch(function(){ toast('Tersimpan lokal (GAS gagal)','error'); });
-  toast('✅ Stock awal tersimpan','success');
-  renderStockTable(tgl);
+  gasCall('saveStockAwal', [gasPayload])
+    .then(function() {
+      toast('✅ Stock awal tersimpan ke Google Sheets', 'success');
+    })
+    .catch(function(err) {
+      toast('Tersimpan lokal, GAS: ' + err.message, 'error');
+    });
+
+  // Re-render tabel
+  var products = Object.keys(_stockData).map(function(sk) { return { sku:sk }; });
+  renderStockTable(tgl, Object.keys(_stockData).map(function(sk){
+    return { sku: sk, nama: _stockData[sk].nama, satuan: _stockData[sk].satuan };
+  }));
+  toast('Stock awal disimpan', 'success');
 }
 
 // ══════════════════════════════════════════════════════
@@ -3647,7 +3735,8 @@ function submitInputBarang() {
   var tgl = document.getElementById('inp-barang-tgl').value;
   var ket = document.getElementById('inp-barang-ket').value.trim();
   if (!tgl) return toast('Pilih tanggal dulu!','error');
-  var rows = document.querySelectorAll('.barang-row');
+
+  var rows  = document.querySelectorAll('.barang-row');
   var items = [];
   rows.forEach(function(r) {
     var sku  = r.querySelector('[data-field="sku"]').value.trim();
@@ -3656,24 +3745,38 @@ function submitInputBarang() {
     if (sku && qty > 0) items.push({ sku:sku, nama:nama, qty:qty });
   });
   if (!items.length) return toast('Isi minimal 1 item dengan qty > 0!','error');
-  var id = 'INP-' + tgl.replace(/-/g,'') + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+
+  var id   = 'INP-' + tgl.replace(/-/g,'') + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
   var data = { id:id, tgl:tgl, ket:ket, items:items };
-  // Simpan ke localStorage per tanggal
-  var key = 'sp_input_barang_'+tgl;
+
+  // Simpan ke localStorage dulu (cache lokal)
+  var key = 'sp_input_barang_' + tgl;
   var existing = {};
   try { existing = JSON.parse(localStorage.getItem(key)||'{}'); } catch(e) {}
   items.forEach(function(it){ existing[it.sku] = (existing[it.sku]||0) + it.qty; });
   localStorage.setItem(key, JSON.stringify(existing));
-  // Simpan log input barang
   var logKey = 'sp_input_barang_log';
   var log = []; try { log = JSON.parse(localStorage.getItem(logKey)||'[]'); } catch(e) {}
   log.push(data); localStorage.setItem(logKey, JSON.stringify(log));
-  // Simpan ke GAS
+
+  // Disable tombol saat proses
+  var btn = document.querySelector('#tab-content-manual .btn-primary[onclick*="submitInputBarang"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan ke Sheets...'; }
+
+  // Simpan ke GAS - tunggu hasilnya
   gasCall('saveInputBarang', [data])
-    .then(function(){ toast('✅ Input barang tersimpan ke Sheets','success'); })
-    .catch(function(){ toast('Tersimpan lokal (GAS gagal)','error'); });
-  toast('✅ '+items.length+' item barang masuk disimpan','success');
-  resetInputBarang();
+    .then(function() {
+      toast('✅ ' + items.length + ' item berhasil disimpan ke Google Sheets!', 'success');
+      resetInputBarang();
+    })
+    .catch(function(err) {
+      toast('⚠️ Tersimpan lokal, GAS error: ' + err.message, 'error');
+      // Tetap reset meski GAS gagal karena sudah tersimpan lokal
+      resetInputBarang();
+    })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan Input Barang'; }
+    });
 }
 
 // ══════════════════════════════════════════════════════
@@ -3690,13 +3793,37 @@ function loadLaporanStock() {
   c.innerHTML = '<div class="loading">Memuat laporan stock</div>';
 
   Promise.all([
-    gasCall('getProducts', []),
-    gasCall('getTrxList',  [])
+    gasCall('getProducts',  []),
+    gasCall('getStockLog',  [tgl]),
+    gasCall('getTrxList',   [])
   ]).then(function(results) {
-    var products = results[0]||[];
-    var trxList  = results[1]||[];
-    var trxToday = trxList.filter(function(t){ return (t.tgl||'').substring(0,10) === tgl; });
-    var detailPromises = trxToday.map(function(t){ return gasCall('getDetailByTrx',[t.id]); });
+    var products = results[0] || [];
+    var stockLog = results[1] || [];
+    var trxList  = results[2] || [];
+
+    // Map stock awal dari GAS
+    var awalMap = {};
+    stockLog.forEach(function(s){ awalMap[s.sku] = Number(s.awal)||0; });
+
+    // Fallback: stock akhir kemarin
+    var yesterday = new Date(tgl);
+    yesterday.setDate(yesterday.getDate()-1);
+    var yTgl   = yesterday.toISOString().slice(0,10);
+    var yCache = loadStockFromCache(yTgl);
+    products.forEach(function(p) {
+      if (awalMap[p.sku] === undefined) {
+        awalMap[p.sku] = yCache[p.sku+'_akhir'] !== undefined
+          ? Number(yCache[p.sku+'_akhir'])||0 : 0;
+      }
+    });
+
+    // Hitung keluar dari transaksi
+    var trxToday = trxList.filter(function(t){
+      return (t.tgl||'').substring(0,10) === tgl;
+    });
+    var detailPromises = trxToday.map(function(t){
+      return gasCall('getDetailByTrx',[t.id]);
+    });
 
     Promise.all(detailPromises).then(function(allDetails) {
       var keluarMap = {};
@@ -3707,33 +3834,24 @@ function loadLaporanStock() {
         });
       });
 
-      var stockCache  = loadStockFromCache(tgl);
-      var yesterday   = new Date(tgl); yesterday.setDate(yesterday.getDate()-1);
-      var yKey        = yesterday.toISOString().slice(0,10);
-      var yCache      = loadStockFromCache(yKey);
-      var masuKCache  = {};
+      var masuKCache = {};
       try { masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}'); } catch(e) {}
 
-      var html = '<div class="card" style="padding:0;overflow:hidden">'
-        + '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
-        + '<div style="font-size:15px;font-weight:800">📊 Stock Harian: ' + fmtDateFull(tgl) + '</div>'
-        + '</div>'
-        + '<div class="table-wrap"><table>'
-        + '<thead><tr><th>SKU</th><th>Nama</th><th>Satuan</th><th style="text-align:center">Stock Awal</th><th style="text-align:center;color:#16A34A">Masuk</th><th style="text-align:center;color:#DC2626">Jual (Keluar)</th><th style="text-align:center;color:var(--accent)">Stock Akhir</th></tr></thead>'
-        + '<tbody>';
-
       var totalMasuk = 0, totalKeluar = 0;
-      products.forEach(function(p) {
+
+      // Render SESUAI urutan products dari GAS
+      var rows = products.map(function(p) {
         var sk     = p.sku;
-        var awal   = stockCache[sk] !== undefined ? Number(stockCache[sk]) :
-                    (yCache[sk+'_akhir'] !== undefined ? Number(yCache[sk+'_akhir']) : 0);
+        var awal   = awalMap[sk] !== undefined ? awalMap[sk] : 0;
         var masuk  = masuKCache[sk] || 0;
         var keluar = keluarMap[sk]  || 0;
         var akhir  = awal + masuk - keluar;
         totalMasuk  += masuk;
         totalKeluar += keluar;
-        var akhirStyle = akhir < 0 ? 'color:#DC2626;font-weight:800' : 'color:var(--accent);font-weight:700';
-        html += '<tr>'
+        var akhirStyle = akhir < 0 ? 'color:#DC2626;font-weight:800'
+          : akhir === 0 ? 'color:var(--text3)'
+          : 'color:var(--accent);font-weight:700';
+        return '<tr>'
           + '<td style="font-family:var(--mono);font-weight:600;font-size:12px">'+esc(sk)+'</td>'
           + '<td class="fw-bold">'+esc(p.nama||'')+'</td>'
           + '<td>'+esc(p.satuan||'')+'</td>'
@@ -3742,18 +3860,31 @@ function loadLaporanStock() {
           + '<td style="text-align:center;font-family:var(--mono);color:#DC2626;font-weight:700">'+keluar+'</td>'
           + '<td style="text-align:center;font-family:var(--mono);'+akhirStyle+'">'+akhir+'</td>'
           + '</tr>';
-      });
+      }).join('');
 
-      html += '</tbody><tfoot><tr style="background:var(--bg2)">'
+      c.innerHTML = '<div class="card" style="padding:0;overflow:hidden">'
+        + '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+        + '<div style="font-size:15px;font-weight:800">📊 Stock Harian: '+fmtDateFull(tgl)+'</div>'
+        + '</div>'
+        + '<div class="table-wrap"><table>'
+        + '<thead><tr>'
+        + '<th>SKU</th><th>Nama</th><th>Satuan</th>'
+        + '<th style="text-align:center">Stock Awal</th>'
+        + '<th style="text-align:center;color:#16A34A">Masuk</th>'
+        + '<th style="text-align:center;color:#DC2626">Jual (Keluar)</th>'
+        + '<th style="text-align:center;color:var(--accent)">Stock Akhir</th>'
+        + '</tr></thead>'
+        + '<tbody>' + rows + '</tbody>'
+        + '<tfoot><tr style="background:var(--bg2)">'
         + '<td colspan="3" style="font-weight:800;padding:12px 14px">TOTAL</td>'
         + '<td></td>'
         + '<td style="text-align:center;font-family:var(--mono);font-weight:800;color:#16A34A">'+totalMasuk+'</td>'
         + '<td style="text-align:center;font-family:var(--mono);font-weight:800;color:#DC2626">'+totalKeluar+'</td>'
         + '<td></td>'
-        + '</tr></tfoot></table></div></div>';
-
-      c.innerHTML = html;
+        + '</tr></tfoot>'
+        + '</table></div></div>';
     });
+
   }).catch(function(err) {
     c.innerHTML = '<div class="card" style="border-color:#DC2626;padding:24px;color:#DC2626">'+esc(err.message)+'</div>';
   });
