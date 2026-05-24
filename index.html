@@ -3274,57 +3274,91 @@ function loadSetoran() {
 }
 
 function buildSetoranHTML(tgl, sales, grandTotal) {
-  function row(id, label, editable, formula) {
+  function row(id, label, editable) {
     var inp = editable
-      ? '<input type="number" id="st-'+id+'" class="form-control" placeholder="0" min="0" oninput="recalcSetoran()" style="text-align:right;font-family:var(--mono)">'
-      : '<div id="st-'+id+'" style="font-family:var(--mono);font-size:16px;font-weight:800;padding:11px 14px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r-sm);text-align:right">'+fmtRp(formula||0)+'</div>';
-    return '<div style="display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
-      +'<div style="font-weight:600;font-size:14px">'+label+'</div>'
+      ? '<input type="number" id="st-'+id+'" class="form-control" placeholder="0" min="0" oninput="recalcSetoran()" style="text-align:right;font-family:var(--mono);width:150px">'
+      : '<div id="st-'+id+'" style="font-family:var(--mono);font-size:15px;font-weight:800;padding:10px 14px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r-sm);text-align:right;width:150px">Rp 0</div>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);gap:8px">'
+      +'<div style="font-weight:600;font-size:14px;flex:1">'+label+'</div>'
       +inp+'</div>';
   }
+  function rowEkstra(idLabel, idVal) {
+    return '<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);gap:8px">'
+      +'<input id="st-'+idLabel+'" class="form-control" placeholder="Keterangan..." style="flex:1;font-size:13px;min-height:38px" oninput="recalcSetoran()">'
+      +'<input type="number" id="st-'+idVal+'" class="form-control" placeholder="0" min="0" oninput="recalcSetoran()" style="text-align:right;font-family:var(--mono);width:150px">'
+    +'</div>';
+  }
+  function rowCalc(id, label, color) {
+    color = color || 'var(--accent)';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:8px">'
+      +'<div style="font-weight:800;font-size:15px;flex:1">'+label+'</div>'
+      +'<div id="st-'+id+'" style="font-family:var(--mono);font-size:16px;font-weight:800;padding:10px 14px;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r-sm);text-align:right;width:150px;color:'+color+'">Rp 0</div>'
+    +'</div>';
+  }
 
-  var html = '<div id="setoran-wrap" style="max-width:560px;margin:0 auto">'
-    +'<div class="card" style="margin-bottom:14px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-    +'<div><div style="font-size:17px;font-weight:800">💰 Setoran: '+esc(sales)+'</div>'
-    +'<div style="color:var(--text2);font-size:13px">'+fmtDateFull(tgl)+'</div></div>'
+  var html = '<div id="setoran-wrap" style="max-width:480px;margin:0 auto">'
+    // Header struk
+    +'<div style="background:var(--gradient);border-radius:var(--r) var(--r) 0 0;padding:16px;display:flex;align-items:center;gap:12px">'
+    +(typeof LOGO_EMBEDDED!=='undefined'&&LOGO_EMBEDDED?'<img src="'+LOGO_EMBEDDED+'" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#fff;padding:3px;border:1.5px solid rgba(255,255,255,.4)">':'')
+    +'<div>'
+    +'<div style="font-size:15px;font-weight:800;color:#fff">Tirta Kencana</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.8)">Setoran Harian</div>'
+    +'</div>'
     +'</div>'
 
-    // Grand Total (COD)
-    +'<div style="background:var(--gradient);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">'
-    +'<div style="color:rgba(255,255,255,.85);font-size:13px;font-weight:700">GRAND TOTAL (COD)</div>'
-    +'<div id="st-grandtotal-disp" style="color:#fff;font-size:18px;font-weight:800;font-family:var(--mono)">'+fmtRp(grandTotal)+'</div>'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:16px;margin-bottom:12px">'
+
+    // Info sales & tanggal
+    +'<div style="background:var(--bg2);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between">'
+    +'<div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px">Sales</div>'
+    +'<div style="font-weight:800;color:var(--accent)">'+esc(sales)+'</div></div>'
+    +'<div style="text-align:right"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px">Tanggal</div>'
+    +'<div style="font-weight:700">'+fmtDateFull(tgl)+'</div></div>'
+    +'</div>'
+
+    // Grand Total COD
+    +'<div style="background:var(--gradient);border-radius:var(--r-sm);padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="color:rgba(255,255,255,.85);font-size:12px;font-weight:700">GRAND TOTAL (COD)</div>'
+    +'<div style="color:#fff;font-size:18px;font-weight:800;font-family:monospace">'+fmtRp(grandTotal)+'</div>'
     +'</div>'
     +'<input type="hidden" id="st-grandtotal" value="'+grandTotal+'">'
 
     // Pengeluaran
-    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:8px">Pengeluaran</div>'
-    +row('makan',   '🍽️ Uang Makan',    true)
-    +row('tips',    '🎁 Tips',           true)
-    +row('parkir',  '🅿️ Parkir',         true)
-    +row('bensin',  '⛽ Bensin',          true)
-    +row('flazz',   '💳 Flazz',          true)
-    +row('transfer','🏦 Transfer',        true)
-    +row('cicilan', '💵 Cicilan Hutang',  true)
-    +row('ekstra1', '&nbsp;',             true)
-    +row('ekstra2', '&nbsp;',             true)
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:6px">Pengeluaran</div>'
+    +row('makan',   '🍽️ Uang Makan',   true)
+    +row('tips',    '🎁 Tips',          true)
+    +row('parkir',  '🅿️ Parkir',        true)
+    +row('bensin',  '⛽ Bensin',         true)
+    +row('flazz',   '💳 Flazz',         true)
+    +row('transfer','🏦 Transfer',       true)
+    +row('cicilan', '💵 Cicilan Hutang', true)
+    // 2 baris ekstra: label bisa diisi + nilai
+    +rowEkstra('lbl-ekstra1','ekstra1')
+    +rowEkstra('lbl-ekstra2','ekstra2')
 
     // Tagihan
-    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:14px 0 8px">Tagihan &amp; Setoran</div>'
-    +row('tagihan', '📄 Tagihan',         true)
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin:12px 0 6px">Tagihan</div>'
+    +row('tagihan', '📄 Tagihan', true)
 
-    // Computed rows
-    +'<div style="border-top:2px solid var(--border);margin-top:8px;padding-top:8px">'
-    +row('total',   '🧮 TOTAL',           false)
+    // Computed
+    +'<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:4px">'
+    +rowCalc('total',   '🧮 TOTAL',    '#1A6DB5')
     +'</div>'
-    +row('setor',   '✅ SETOR',           true)
-    +'<div style="border-top:2px solid var(--accent);margin-top:8px;padding-top:8px">'
-    +row('selisih', '⚖️ SELISIH',          false)
+    +'<div style="border-bottom:1px solid var(--border)">'
+    +row('setor', '✅ SETOR', true)
+    +'</div>'
+    +'<div style="border-top:2px solid var(--accent);margin-top:6px;padding-top:4px">'
+    +rowCalc('selisih', '⚖️ SELISIH',  'var(--accent)')
     +'</div>'
     +'</div>'
 
-    // Print button
-    +'<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="printSetoran()">🖨️ Print Setoran</button>'
+    // Action buttons - struk style
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">'
+    +'<button class="btn btn-primary btn-sm" onclick="printSetoran()">🖨️ Print</button>'
+    +'<button class="btn btn-primary btn-sm" onclick="downloadSetoranPng()">📥 PNG</button>'
+    +'<button class="btn btn-scan btn-sm" onclick="shareSetoranWA()">💬 WA</button>'
+    +'</div>'
+    +'<div id="setor-save-status" style="margin-top:10px;font-size:12px;color:var(--text3);text-align:center"></div>'
     +'</div>';
   return html;
 }
@@ -3335,10 +3369,9 @@ function recalcSetoran() {
     var el = document.getElementById('st-'+id);
     if (!el) return;
     el.textContent = fmtRp(v);
-    el.style.color = v < 0 ? '#DC2626' : 'var(--text)';
+    el.style.color = v < 0 ? '#DC2626' : v === 0 ? 'var(--text3)' : 'inherit';
   }
-
-  var grand    = parseFloat(document.getElementById('st-grandtotal').value)||0;
+  var grand    = parseFloat((document.getElementById('st-grandtotal')||{}).value)||0;
   var tagihan  = val('tagihan');
   var makan    = val('makan');
   var tips     = val('tips');
@@ -3349,65 +3382,192 @@ function recalcSetoran() {
   var cicilan  = val('cicilan');
   var ekstra1  = val('ekstra1');
   var ekstra2  = val('ekstra2');
-
   // TOTAL = grandTotal + tagihan - semua pengeluaran
-  var total = grand + tagihan - makan - tips - parkir - bensin - flazz - transfer - cicilan - ekstra1 - ekstra2;
+  var total   = grand + tagihan - makan - tips - parkir - bensin - flazz - transfer - cicilan - ekstra1 - ekstra2;
   setDisp('total', total);
-
   // SELISIH = total - setor
   var setor   = val('setor');
   var selisih = total - setor;
   setDisp('selisih', selisih);
+  // Auto-save ke GAS setelah setor diisi
+  if (setor > 0) autoSaveSetoran();
 }
 
-function printSetoran() {
-  var wrap = document.getElementById('setoran-wrap');
-  if (!wrap) { toast('Tampilkan setoran dulu!','error'); return; }
-  var win = window.open('','_blank','width=600,height=800');
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Setoran</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;padding:20px;font-size:13px}'
-    +'.row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee}'
-    +'.label{font-weight:600}.val{font-weight:700;text-align:right}'
-    +'.hdr{background:#1A6DB5;color:#fff;padding:10px 14px;border-radius:6px;margin-bottom:12px;display:flex;justify-content:space-between}'
-    +'.section{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999;margin:12px 0 6px}'
-    +'.total-row{border-top:2px solid #1A6DB5;padding-top:8px;margin-top:4px}'
-    +'</style></head><body>');
+var _setoranSaveTimer = null;
+function autoSaveSetoran() {
+  clearTimeout(_setoranSaveTimer);
+  _setoranSaveTimer = setTimeout(function() { saveSetoranToGAS(false); }, 2000);
+}
 
-  // Ambil nilai
-  function gv(id) { var el = document.getElementById('st-'+id); return el ? (parseFloat(el.value)||0) : 0; }
-  function gd(id) { var el = document.getElementById('st-'+id); return el ? el.textContent : '-'; }
+function saveSetoranToGAS(showToast) {
+  var sales = (document.getElementById('setor-sales')||{}).value || '';
+  var tgl   = (document.getElementById('setor-tgl')||{}).value   || '';
+  if (!sales || !tgl) return;
+  function gv(id) { var el=document.getElementById('st-'+id); return el?(parseFloat(el.value)||0):0; }
+  function gl(id) { var el=document.getElementById('st-'+id); return el?(el.value||''):''; }
+  var payload = {
+    tgl:tgl, sales:sales,
+    grandTotal : parseFloat((document.getElementById('st-grandtotal')||{}).value)||0,
+    makan:gv('makan'), tips:gv('tips'), parkir:gv('parkir'),
+    bensin:gv('bensin'), flazz:gv('flazz'), transfer:gv('transfer'),
+    cicilan:gv('cicilan'),
+    ekstra1Label:gl('lbl-ekstra1'), ekstra1:gv('ekstra1'),
+    ekstra2Label:gl('lbl-ekstra2'), ekstra2:gv('ekstra2'),
+    tagihan:gv('tagihan'),
+    total  : parseFloat(((document.getElementById('st-total')||{}).textContent||'0').replace(/[^0-9]/g,'')),
+    setor  : gv('setor'),
+    selisih: parseFloat(((document.getElementById('st-selisih')||{}).textContent||'0').replace(/[^0-9]/g,''))
+  };
+  var ss = document.getElementById('setor-save-status');
+  if (ss) ss.textContent = '⏳ Menyimpan...';
+  gasCall('saveSetoran', [payload])
+    .then(function() {
+      if (ss) ss.textContent = '✅ Tersimpan ke Sheets';
+      if (showToast) toast('✅ Setoran tersimpan','success');
+      setTimeout(function(){ if(ss) ss.textContent=''; }, 3000);
+    })
+    .catch(function(err) {
+      if (ss) ss.textContent = '⚠️ Simpan lokal saja';
+      if (showToast) toast('GAS error: '+err.message,'error');
+    });
+}
 
-  var sales = document.getElementById('setor-sales').value;
-  var tgl   = document.getElementById('setor-tgl').value;
-  var grand = parseFloat(document.getElementById('st-grandtotal').value)||0;
-
-  win.document.write('<div class="hdr"><div><b>SETORAN: '+sales+'</b><br><span style="font-size:11px;opacity:.8">'+fmtDateFull(tgl)+'</span></div></div>');
-  win.document.write('<div class="row"><span class="label">GRAND TOTAL (COD)</span><span class="val">'+fmtRp(grand)+'</span></div>');
-  win.document.write('<div class="section">Pengeluaran</div>');
+// ── Bangun HTML setoran (struk style, lebar 360px) ──
+function buildSetoranStrukHTML() {
+  function gv(id) { var el=document.getElementById('st-'+id); return el?(parseFloat(el.value)||0):0; }
+  function gl(id) { var el=document.getElementById('st-'+id); return el?(el.value||''):''; }
+  function gd(id) { var el=document.getElementById('st-'+id); return el?el.textContent:'-'; }
+  var sales = (document.getElementById('setor-sales')||{}).value||'';
+  var tgl   = (document.getElementById('setor-tgl')||{}).value||'';
+  var grand = parseFloat((document.getElementById('st-grandtotal')||{}).value)||0;
+  var s     = settings||{};
+  function rowS(label, val, bold) {
+    return '<tr>'
+      +'<td style="padding:5px 0;font-size:12px;color:#3D5268'+(bold?';font-weight:800':'')+'">'+label+'</td>'
+      +'<td style="padding:5px 0;font-size:12px;text-align:right;font-family:Tahoma,sans-serif;font-weight:'+(bold?'800':'600')+';color:'+(bold?'#0D2B3E':'#3D5268')+'">'+val+'</td>'
+    +'</tr>';
+  }
+  var logoHtml = (typeof LOGO_EMBEDDED!=='undefined'&&LOGO_EMBEDDED)
+    ? '<img src="'+LOGO_EMBEDDED+'" style="width:44px;height:44px;border-radius:8px;object-fit:contain;background:#fff;padding:3px;border:1.5px solid rgba(255,255,255,.4);flex-shrink:0">'
+    : '<div style="width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💰</div>';
 
   var rows = [
     ['Uang Makan','makan'],['Tips','tips'],['Parkir','parkir'],
-    ['Bensin','bensin'],['Flazz','flazz'],['Transfer','transfer'],
-    ['Cicilan Hutang','cicilan'],
+    ['Bensin','bensin'],['Flazz','flazz'],['Transfer','transfer'],['Cicilan Hutang','cicilan']
   ];
-  rows.forEach(function(r){
-    var v = gv(r[1]);
-    if (v) win.document.write('<div class="row"><span class="label">'+r[0]+'</span><span class="val">'+fmtRp(v)+'</span></div>');
-  });
-  var e1=gv('ekstra1'),e2=gv('ekstra2');
-  if(e1) win.document.write('<div class="row"><span class="label">-</span><span class="val">'+fmtRp(e1)+'</span></div>');
-  if(e2) win.document.write('<div class="row"><span class="label">-</span><span class="val">'+fmtRp(e2)+'</span></div>');
+  var e1lbl=gl('lbl-ekstra1')||'Lainnya 1', e1=gv('ekstra1');
+  var e2lbl=gl('lbl-ekstra2')||'Lainnya 2', e2=gv('ekstra2');
+  var tag=gv('tagihan'), setor=gv('setor');
 
-  var tag=gv('tagihan');
-  if(tag) win.document.write('<div class="section">Tagihan</div><div class="row"><span class="label">Tagihan</span><span class="val">'+fmtRp(tag)+'</span></div>');
+  var html = '<div id="setoran-struk-root" style="width:360px;background:#fff;border-radius:16px;overflow:hidden;font-family:DM Sans,sans-serif;box-shadow:0 8px 32px rgba(29,111,164,.18)">'
+    // Header
+    +'<div style="background:linear-gradient(135deg,#1D6FA4,#38A3D4);padding:16px 18px;display:flex;align-items:center;gap:12px">'
+    +logoHtml
+    +'<div><div style="font-size:15px;font-weight:800;color:#fff">'+(s.storeName||'Tirta Kencana')+'</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.75)">Setoran Harian</div>'
+    +'</div>'
+    +'</div>'
+    // Sub header
+    +'<div style="background:#EBF4FB;padding:10px 18px;display:flex;justify-content:space-between">'
+    +'<div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7BAAC4">Sales</div>'
+    +'<div style="font-weight:800;color:#1D6FA4;font-size:13px">'+esc(sales)+'</div></div>'
+    +'<div style="text-align:right"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7BAAC4">Tanggal</div>'
+    +'<div style="font-weight:700;color:#0D2B3E;font-size:12px">'+fmtDateFull(tgl)+'</div></div>'
+    +'</div>'
+    // Grand Total
+    +'<div style="padding:12px 18px;background:#EBF4FB;display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px dashed #C5DFF0">'
+    +'<div style="font-size:12px;font-weight:700;color:#3D5268">GRAND TOTAL (COD)</div>'
+    +'<div style="font-size:16px;font-weight:800;color:#1D6FA4;font-family:Tahoma,sans-serif">'+fmtRp(grand)+'</div>'
+    +'</div>'
+    // Detail rows
+    +'<div style="padding:12px 18px">'
+    +'<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7BAAC4;margin-bottom:4px">Pengeluaran</div>'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +rows.filter(function(r){return gv(r[1])>0;}).map(function(r){return rowS(r[0],fmtRp(gv(r[1])));}).join('')
+    +(e1>0?rowS(e1lbl,fmtRp(e1)):'')
+    +(e2>0?rowS(e2lbl,fmtRp(e2)):'')
+    +(tag>0?'</table><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7BAAC4;margin:8px 0 4px">Tagihan</div><table style="width:100%;border-collapse:collapse">'+rowS('Tagihan',fmtRp(tag)):'')
+    +'</table>'
+    +'<div style="border-top:1.5px dashed #C5DFF0;margin-top:10px;padding-top:10px">'
+    +'<table style="width:100%;border-collapse:collapse">'
+    +rowS('TOTAL', gd('total'), true)
+    +rowS('SETOR', fmtRp(setor))
+    +'</table>'
+    +'</div>'
+    +'<div style="border-top:2px solid #1D6FA4;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:15px;font-weight:800;color:#0D2B3E">SELISIH</div>'
+    +'<div style="font-size:16px;font-weight:800;font-family:Tahoma,sans-serif;color:'+(parseFloat(gd('selisih').replace(/[^0-9\-]/g,''))<0?'#DC2626':'#16A34A')+'">'+gd('selisih')+'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="background:#EBF4FB;padding:10px 18px;text-align:center;font-size:11px;color:#3D6880;border-top:1px dashed #C5DFF0">'+(s.footer||'Terima kasih!')+'</div>'
+    +'</div>';
+  return html;
+}
 
-  win.document.write('<div class="section">Rekap</div>');
-  win.document.write('<div class="row total-row"><span class="label">TOTAL</span><span class="val" style="color:#1A6DB5">'+gd('total')+'</span></div>');
-  win.document.write('<div class="row"><span class="label">SETOR</span><span class="val">'+fmtRp(gv('setor'))+'</span></div>');
-  win.document.write('<div class="row total-row"><span class="label">SELISIH</span><span class="val" style="color:'+(parseFloat(gd('selisih'))<0?'#DC2626':'#16A34A')+'">'+gd('selisih')+'</span></div>');
+function printSetoran() {
+  if (!document.getElementById('setoran-wrap')) { toast('Tampilkan setoran dulu!','error'); return; }
+  saveSetoranToGAS(false);
+  var win = window.open('','_blank','width=420,height=700');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Setoran</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">'
+    +'</head><body style="margin:16px;background:#e8f2f9;display:flex;justify-content:center">');
+  win.document.write(buildSetoranStrukHTML());
   win.document.write('<script>window.onload=function(){window.print();}<\/script></body></html>');
   win.document.close();
+}
+
+function downloadSetoranPng() {
+  if (!document.getElementById('setoran-wrap')) { toast('Tampilkan setoran dulu!','error'); return; }
+  saveSetoranToGAS(false);
+  var sales = (document.getElementById('setor-sales')||{}).value||'sales';
+  var tgl   = (document.getElementById('setor-tgl')||{}).value||'';
+  var fname = 'Setoran-'+esc(sales)+'-'+tgl+'.png';
+  var off   = document.getElementById('struk-offscreen');
+  off.style.cssText = 'position:fixed;left:-9999px;top:0;pointer-events:none;z-index:-1;background:#e8f2f9;padding:20px';
+  off.innerHTML = buildSetoranStrukHTML();
+  var el = off.querySelector('#setoran-struk-root');
+  if (!el) { toast('Gagal render','error'); return; }
+  toast('Membuat PNG...','info');
+  setTimeout(function() {
+    html2canvas(el,{backgroundColor:'#e8f2f9',scale:2.5,useCORS:true,logging:false}).then(function(canvas){
+      var a=document.createElement('a'); a.download=fname; a.href=canvas.toDataURL('image/png');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      off.innerHTML='';
+      toast('📂 Tersimpan: '+fname,'success');
+    }).catch(function(err){ off.innerHTML=''; toast('Gagal: '+err.message,'error'); });
+  }, 400);
+}
+
+function shareSetoranWA() {
+  if (!document.getElementById('setoran-wrap')) { toast('Tampilkan setoran dulu!','error'); return; }
+  saveSetoranToGAS(false);
+  function gv(id){var el=document.getElementById('st-'+id);return el?(parseFloat(el.value)||0):0;}
+  function gl(id){var el=document.getElementById('st-'+id);return el?(el.value||''):''; }
+  function gd(id){var el=document.getElementById('st-'+id);return el?el.textContent:'-';}
+  var sales=document.getElementById('setor-sales').value;
+  var tgl=document.getElementById('setor-tgl').value;
+  var grand=parseFloat(document.getElementById('st-grandtotal').value)||0;
+  var s=settings||{};
+  var lines=['💰 *SETORAN HARIAN*','*'+(s.storeName||'Tirta Kencana')+'*','━━━━━━━━━━'];
+  lines.push('Sales  : *'+sales+'*');
+  lines.push('Tgl    : '+fmtDateFull(tgl));
+  lines.push('━━━━━━━━━━');
+  lines.push('Grand Total (COD) : '+fmtRp(grand));
+  lines.push('');
+  lines.push('*Pengeluaran:*');
+  [['Uang Makan','makan'],['Tips','tips'],['Parkir','parkir'],['Bensin','bensin'],
+   ['Flazz','flazz'],['Transfer','transfer'],['Cicilan Hutang','cicilan']].forEach(function(r){
+    var v=gv(r[1]); if(v) lines.push(r[0]+' : '+fmtRp(v));
+  });
+  var e1=gv('ekstra1'),e2=gv('ekstra2');
+  if(e1) lines.push((gl('lbl-ekstra1')||'Lainnya 1')+' : '+fmtRp(e1));
+  if(e2) lines.push((gl('lbl-ekstra2')||'Lainnya 2')+' : '+fmtRp(e2));
+  var tag=gv('tagihan'); if(tag) { lines.push(''); lines.push('Tagihan : '+fmtRp(tag)); }
+  lines.push('━━━━━━━━━━');
+  lines.push('TOTAL   : *'+gd('total')+'*');
+  lines.push('SETOR   : '+fmtRp(gv('setor')));
+  lines.push('SELISIH : *'+gd('selisih')+'*');
+  window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')),'_blank');
 }
 
 // ══════════════════════════════════════════════════════
