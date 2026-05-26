@@ -3598,54 +3598,44 @@ function loadStock() {
   var tb = document.getElementById('stock-tbody');
   tb.innerHTML = '<tr><td colspan="7" class="loading">Memuat stock</td></tr>';
 
-  // Load produk + stock log dari GAS + transaksi hari ini sekaligus
+  // Load produk + stock log + transaksi + input barang dari GAS sekaligus
   Promise.all([
-    gasCall('getProducts',  []),
-    gasCall('getStockLog',  [tgl]),
-    gasCall('getTrxList',   [])
+    gasCall('getProducts',    []),
+    gasCall('getStockLog',    [tgl]),
+    gasCall('getTrxList',     []),
+    gasCall('getInputBarang', [tgl])   // ← tambah ini
   ]).then(function(results) {
-    var products = results[0] || [];
-    var stockLog = results[1] || []; // [{sku, nama, awal, akhir}]
-    var trxList  = results[2] || [];
+    var products  = results[0] || [];
+    var stockLog  = results[1] || [];
+    var trxList   = results[2] || [];
+    var barangLog = results[3] || {}; // { sku: qty }
 
-    // Buat map stock awal dari GAS (prioritas) lalu localStorage
+    // Stock awal dari GAS
     var awalMap = {};
-    var cacheLocal = loadStockFromCache(tgl);
+    stockLog.forEach(function(s){ awalMap[s.sku] = Number(s.awal)||0; });
 
-    // Stock awal dari GAS StockAwal sheet
-    stockLog.forEach(function(s) {
-      awalMap[s.sku] = Number(s.awal) || 0;
-    });
-
-    // Fallback: stock akhir kemarin → jadi awal hari ini
+    // Fallback: stock akhir kemarin
     var yesterday = new Date(tgl);
-    yesterday.setDate(yesterday.getDate() - 1);
-    var yTgl = yesterday.toISOString().slice(0,10);
+    yesterday.setDate(yesterday.getDate()-1);
+    var yTgl  = yesterday.toISOString().slice(0,10);
     var yCache = loadStockFromCache(yTgl);
     products.forEach(function(p) {
       if (awalMap[p.sku] === undefined) {
-        // Coba dari cache akhir kemarin
-        if (yCache[p.sku + '_akhir'] !== undefined) {
-          awalMap[p.sku] = Number(yCache[p.sku + '_akhir']) || 0;
-        } else if (cacheLocal[p.sku] !== undefined) {
-          awalMap[p.sku] = Number(cacheLocal[p.sku]) || 0;
-        } else {
-          awalMap[p.sku] = 0;
-        }
+        awalMap[p.sku] = yCache[p.sku+'_akhir'] !== undefined
+          ? Number(yCache[p.sku+'_akhir'])||0 : 0;
       }
     });
 
-    // Hitung keluar (penjualan) per SKU pada tanggal ini
-    var keluarMap = {};
-    var trxToday  = trxList.filter(function(t){
+    // Hitung keluar dari penjualan
+    var trxToday = trxList.filter(function(t){
       return (t.tgl||'').substring(0,10) === tgl;
     });
-
     var detailPromises = trxToday.map(function(t){
       return gasCall('getDetailByTrx',[t.id]);
     });
 
     Promise.all(detailPromises).then(function(allDetails) {
+      var keluarMap = {};
       allDetails.forEach(function(items) {
         (items||[]).forEach(function(it) {
           var sk = it.sku||'';
@@ -3653,11 +3643,16 @@ function loadStock() {
         });
       });
 
-      // Load input barang masuk dari localStorage
+      // Masuk: gabungkan dari GAS sheet + localStorage (keduanya)
       var masuKCache = {};
       try { masuKCache = JSON.parse(localStorage.getItem('sp_input_barang_'+tgl)||'{}'); } catch(e) {}
+      // Merge dengan data dari GAS InputBarang sheet
+      Object.keys(barangLog).forEach(function(sk) {
+        masuKCache[sk] = Math.max(masuKCache[sk]||0, Number(barangLog[sk])||0);
+      });
+      // Sync localStorage dengan data GAS (supaya konsisten)
+      try { localStorage.setItem('sp_input_barang_'+tgl, JSON.stringify(masuKCache)); } catch(e) {}
 
-      // Build _stockData — urutan SESUAI urutan products dari GAS
       _stockData = {};
       products.forEach(function(p) {
         var sk     = p.sku;
@@ -3671,8 +3666,7 @@ function loadStock() {
           keluar : keluar,
           akhir  : akhir,
           nama   : p.nama,
-          satuan : p.satuan,
-          _order : products.indexOf(p) // simpan urutan asli
+          satuan : p.satuan
         };
       });
 
@@ -3686,27 +3680,74 @@ function loadStock() {
 
 function renderStockTable(tgl, products) {
   var tb   = document.getElementById('stock-tbody');
-  // Render SESUAI urutan products dari GAS (bukan Object.keys yang acak)
   var skus = products ? products.map(function(p){ return p.sku; }) : Object.keys(_stockData);
 
   if (!skus.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Belum ada produk</td></tr>';
+    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Belum ada produk. Tambahkan produk di menu Produk terlebih dahulu.</td></tr>';
     return;
   }
+
   tb.innerHTML = skus.map(function(sk) {
     var d = _stockData[sk];
     if (!d) return '';
-    var akhirColor = d.akhir < 0 ? 'color:#DC2626;font-weight:800' : d.akhir === 0 ? 'color:var(--text3)' : 'color:var(--accent);font-weight:700';
-    return '<tr>'
+    var akhirColor = d.akhir < 0
+      ? 'color:#DC2626;font-weight:800'
+      : d.akhir === 0 ? 'color:var(--text3)'
+      : 'color:var(--accent);font-weight:700';
+    return '<tr id="stock-row-'+esc(sk)+'">'
       + '<td style="font-family:var(--mono);font-weight:600;font-size:12px">' + esc(sk) + '</td>'
       + '<td class="fw-bold">' + esc(d.nama||'') + '</td>'
       + '<td>' + esc(d.satuan||'') + '</td>'
-      + '<td><input type="number" min="0" value="' + d.awal + '" data-sku="' + esc(sk) + '" class="form-control stock-awal-inp" style="width:90px;min-height:38px;text-align:center" oninput="recalcStockRow(this)"></td>'
+      + '<td>'
+      +   '<input type="number" min="0" value="' + d.awal + '" '
+      +   'data-sku="' + esc(sk) + '" '
+      +   'class="form-control stock-awal-inp" '
+      +   'style="width:90px;min-height:38px;text-align:center;border-color:'+(d.awal>0?'#16A34A':'var(--border)')+'" '
+      +   'oninput="onStockAwalChange(this)">'
+      + '</td>'
       + '<td style="font-family:var(--mono);color:#16A34A;font-weight:700;text-align:center" id="stm-'+esc(sk)+'">' + d.masuk + '</td>'
       + '<td style="font-family:var(--mono);color:#DC2626;font-weight:700;text-align:center" id="stk-'+esc(sk)+'">' + d.keluar + '</td>'
       + '<td style="font-family:var(--mono);text-align:center;' + akhirColor + '" id="sta-'+esc(sk)+'">' + d.akhir + '</td>'
       + '</tr>';
   }).join('');
+
+  // Tampilkan hint jika semua stock awal = 0
+  var allZero = skus.every(function(sk){ return !_stockData[sk] || _stockData[sk].awal === 0; });
+  if (allZero) {
+    var hint = document.createElement('tr');
+    hint.id = 'stock-hint-row';
+    hint.innerHTML = '<td colspan="7" style="background:#FFF9C4;padding:10px 14px;font-size:13px;color:#B45309;text-align:center">'
+      + '⬆️ Isi Stock Awal tiap produk lalu klik <b>💾 Simpan Stock Awal</b>'
+      + '</td>';
+    tb.appendChild(hint);
+  }
+}
+
+// Dipanggil setiap kali user mengetik di field Stock Awal
+function onStockAwalChange(inp) {
+  var sk   = inp.dataset.sku;
+  var awal = parseFloat(inp.value) || 0;
+  if (!_stockData[sk]) return;
+
+  // Update visual border
+  inp.style.borderColor = awal > 0 ? '#16A34A' : 'var(--border)';
+
+  // Update _stockData dan recalc akhir
+  _stockData[sk].awal  = awal;
+  _stockData[sk].akhir = awal + _stockData[sk].masuk - _stockData[sk].keluar;
+
+  // Update tampilan stock akhir
+  var staEl = document.getElementById('sta-' + sk);
+  if (staEl) {
+    staEl.textContent = _stockData[sk].akhir;
+    staEl.style.color = _stockData[sk].akhir < 0 ? '#DC2626'
+      : _stockData[sk].akhir === 0 ? 'var(--text3)' : 'var(--accent)';
+    staEl.style.fontWeight = _stockData[sk].akhir !== 0 ? '700' : '';
+  }
+
+  // Hapus hint row
+  var hint = document.getElementById('stock-hint-row');
+  if (hint && awal > 0) hint.remove();
 }
 
 function recalcStockRow(inp) {
@@ -3792,16 +3833,23 @@ function tarikDataSSID() {
   var statCol = document.getElementById('inp-ssid-status-col').value.trim();
   if (!ssid) return toast('Masukkan Spreadsheet ID dulu!','error');
   var prev = document.getElementById('ssid-preview');
-  prev.innerHTML = '<div class="loading">Mengambil data dari spreadsheet</div>';
-  gasCall('tarikSSID', [ssid, sheet, statCol]).then(function(data) {
+  prev.innerHTML = '<div class="loading">Mengambil data kiriman hari ini dari spreadsheet</div>';
+
+  var tglHariIni = document.getElementById('inp-barang-tgl').value || new Date().toISOString().slice(0,10);
+
+  // Kirim tanggal hari ini ke GAS untuk filter otomatis
+  gasCall('tarikSSID', [ssid, sheet, statCol, tglHariIni]).then(function(data) {
     if (!data || !data.rows || !data.rows.length) {
-      prev.innerHTML = '<div class="empty-state" style="padding:24px"><div class="icon">📋</div><div>Tidak ada data ditemukan (status = Kiriman)</div></div>';
+      prev.innerHTML = '<div class="empty-state" style="padding:24px"><div class="icon">📋</div>'
+        +'<div>Tidak ada data <b>Kiriman</b> untuk tanggal <b>'+tglHariIni+'</b></div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:6px">Pastikan kolom status berisi "Kiriman" dan kolom tanggal berisi tanggal hari ini</div>'
+        +'</div>';
       return;
     }
-    // Tampilkan preview tabel
     var headers = data.headers || [];
     var html = '<div class="card" style="padding:0;overflow:hidden;margin-top:12px">'
-      + '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800">📋 Preview Data ('+data.rows.length+' baris)</div>'
+      + '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800">'
+      + '📋 Preview Data Kiriman '+tglHariIni+' ('+data.rows.length+' baris)</div>'
       + '<div class="table-wrap"><table><thead><tr>'
       + headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')
       + '</tr></thead><tbody>'
@@ -3811,12 +3859,14 @@ function tarikDataSSID() {
       + (data.rows.length > 20 ? '<tr><td colspan="'+headers.length+'" class="text-center text-muted" style="padding:10px">...dan '+(data.rows.length-20)+' baris lainnya</td></tr>' : '')
       + '</tbody></table></div>'
       + '<div style="padding:12px 16px;border-top:1px solid var(--border)">'
-      + '<div style="margin-bottom:10px"><label class="form-label">Pilih kolom SKU</label>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
+      + '<div><label class="form-label">Kolom SKU</label>'
       + '<select id="map-sku" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
-      + '<div style="margin-bottom:10px"><label class="form-label">Pilih kolom Nama</label>'
+      + '<div><label class="form-label">Kolom Nama</label>'
       + '<select id="map-nama" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
-      + '<div style="margin-bottom:14px"><label class="form-label">Pilih kolom Qty</label>'
+      + '<div><label class="form-label">Kolom Qty</label>'
       + '<select id="map-qty" class="form-control">'+headers.map(function(h,i){return '<option value="'+i+'">'+esc(h)+'</option>';}).join('')+'</select></div>'
+      + '</div>'
       + '<button class="btn btn-primary" onclick="importSSIDToBarang('+JSON.stringify(data).replace(/</g,'\\x3c')+')">✅ Import ke Input Barang</button>'
       + '</div></div>';
     prev.innerHTML = html;
@@ -3824,8 +3874,8 @@ function tarikDataSSID() {
     headers.forEach(function(h,i) {
       var hl = h.toLowerCase();
       if (hl.includes('sku') || hl.includes('kode')) document.getElementById('map-sku').value = i;
-      if (hl.includes('nama') || hl.includes('produk')) document.getElementById('map-nama').value = i;
-      if (hl.includes('qty') || hl.includes('jumlah') || hl.includes('pcs')) document.getElementById('map-qty').value = i;
+      if (hl.includes('nama') || hl.includes('produk') || hl.includes('barang')) document.getElementById('map-nama').value = i;
+      if (hl.includes('qty') || hl.includes('jumlah') || hl.includes('pcs') || hl.includes('dus')) document.getElementById('map-qty').value = i;
     });
   }).catch(function(err) {
     prev.innerHTML = '<div class="card" style="border-color:#DC2626;padding:20px;color:#DC2626">❌ '+esc(err.message)+'</div>';
