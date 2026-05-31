@@ -2156,12 +2156,91 @@ function filterTrx() {
   });
   renderTrxTable();
 }
+
+function onStatusChange(event) {
+  var selectEl = event.target;
+  var id = selectEl.getAttribute('data-id');
+  var newStatus = selectEl.value;
+  
+  console.log("=== STATUS CHANGE ===");
+  console.log("ID:", id);
+  console.log("New Status:", newStatus);
+  
+  if (!id) {
+    console.error("ID not found!");
+    toast('ID transaksi tidak valid', 'error');
+    return;
+  }
+  
+  if (!confirm("Ubah status transaksi " + id + " menjadi " + newStatus + "?")) {
+    // Kembalikan ke nilai sebelumnya
+    for (var i = 0; i < allTrxList.length; i++) {
+      if (allTrxList[i].id === id) {
+        selectEl.value = allTrxList[i].status;
+        break;
+      }
+    }
+    return;
+  }
+  
+  selectEl.disabled = true;
+  
+  gasCall('updateStatus', [id, newStatus]).then(function(result) {
+    console.log("GAS Result:", result);
+    if (result && result.ok) {
+      toast('Status berhasil diubah', 'success');
+      for (var i = 0; i < allTrxList.length; i++) {
+        if (allTrxList[i].id === id) {
+          allTrxList[i].status = newStatus;
+          break;
+        }
+      }
+      // Refresh tabel agar tampilan konsisten
+      filterTrx();
+    } else {
+      toast('Gagal: ' + (result && result.error ? result.error : 'Unknown error'), 'error');
+      // Rollback
+      for (var i = 0; i < allTrxList.length; i++) {
+        if (allTrxList[i].id === id) {
+          selectEl.value = allTrxList[i].status;
+          break;
+        }
+      }
+    }
+  }).catch(function(err) {
+    console.error("Error:", err);
+    toast('Gagal: ' + err.message, 'error');
+    // Rollback
+    for (var i = 0; i < allTrxList.length; i++) {
+      if (allTrxList[i].id === id) {
+        selectEl.value = allTrxList[i].status;
+        break;
+      }
+    }
+  }).finally(function() {
+    selectEl.disabled = false;
+  });
+}
+
 function renderTrxTable() {
   var tb = document.getElementById('trx-tbody');
-  if (!filteredTrx.length) { tb.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:32px">Tidak ada transaksi</td></tr>'; return; }
+  if (!filteredTrx.length) { 
+    tb.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:32px">Tidak ada transaksi</td></tr>'; 
+    return; 
+  }
+  
   var html = '';
-  filteredTrx.forEach(function(t) {
+  for (var i = 0; i < filteredTrx.length; i++) {
+    var t = filteredTrx[i];
     var ns = normStatus(t.status);
+    var idClean = t.id.replace(/'/g, "\\'");
+    
+    // Tentukan class button aktif
+    var codClass = (ns === 'cod') ? 'btn-primary' : 'btn-secondary';
+    var transferClass = (ns === 'transfer') ? 'btn-primary' : 'btn-secondary';
+    var qrisClass = (ns === 'qris') ? 'btn-primary' : 'btn-secondary';
+    var belumClass = (ns === 'belumtransfer') ? 'btn-primary' : 'btn-secondary';
+    
     html += '<tr>'
       + '<td style="font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700">' + esc(t.id) + '</td>'
       + '<td>' + fmtDate(t.tgl) + '</td>'
@@ -2170,26 +2249,59 @@ function renderTrxTable() {
       + '<td style="font-family:var(--mono);font-size:13px">' + fmtRp(t.gross) + '</td>'
       + '<td style="color:#DC2626;font-family:var(--mono);font-size:13px">' + fmtRp(t.diskon) + '</td>'
       + '<td class="fw-bold" style="font-family:var(--mono);font-size:13px;color:var(--accent)">' + fmtRp(t.nett) + '</td>'
-      + '<td><select class="form-control" style="width:145px;padding:7px 10px;font-size:13px;min-height:38px" onchange="updateStatus(\'' + esc(t.id) + '\',this.value)">'
-        + '<option value="belumTransfer"' + (ns==='belumtransfer'?' selected':'') + '>Belum Transfer</option>'
-        + '<option value="cod"' + (ns==='cod'?' selected':'') + '>COD</option>'
-        + '<option value="transfer"' + (ns==='transfer'?' selected':'') + '>Transfer</option>'
-        + '<option value="qris"' + (ns==='qris'?' selected':'') + '>QRIS</option>'
-      + '</select></td>'
+      + '<td>'
+        + '<div style="display:flex;gap:5px;flex-wrap:wrap;">'
+        + '<button class="btn btn-sm ' + codClass + '" onclick="updateStatus(\'' + idClean + '\', \'cod\')" style="padding:4px 10px;font-size:12px;min-height:32px">COD</button>'
+        + '<button class="btn btn-sm ' + transferClass + '" onclick="updateStatus(\'' + idClean + '\', \'transfer\')" style="padding:4px 10px;font-size:12px;min-height:32px">Transfer</button>'
+        + '<button class="btn btn-sm ' + qrisClass + '" onclick="updateStatus(\'' + idClean + '\', \'qris\')" style="padding:4px 10px;font-size:12px;min-height:32px">QRIS</button>'
+        + '<button class="btn btn-sm ' + belumClass + '" onclick="updateStatus(\'' + idClean + '\', \'belumTransfer\')" style="padding:4px 10px;font-size:12px;min-height:32px">Belum</button>'
+        + '</div>'
+      + '</td>'
       + '<td style="white-space:nowrap;display:flex;gap:5px;padding-top:14px">'
-        + '<button class="btn btn-ghost btn-sm btn-icon" onclick="viewDetail(\'' + esc(t.id) + '\')" title="Detail">👁</button>'
-        + '<button class="btn btn-primary btn-sm btn-icon" onclick="openStrukById(\'' + esc(t.id) + '\')" title="Struk">🧾</button>'
-        + '<button class="btn btn-danger btn-sm btn-icon" onclick="deleteTrx(\'' + esc(t.id) + '\')" title="Hapus">🗑</button>'
-      + '</td></tr>';
-  });
+        + '<button class="btn btn-ghost btn-sm btn-icon" onclick="viewDetail(\'' + idClean + '\')" title="Detail">👁</button>'
+        + '<button class="btn btn-primary btn-sm btn-icon" onclick="openStrukById(\'' + idClean + '\')" title="Struk">🧾</button>'
+        + '<button class="btn btn-danger btn-sm btn-icon" onclick="deleteTrx(\'' + idClean + '\')" title="Hapus">🗑</button>'
+      + '</td>'
+    + '</tr>';
+  }
   tb.innerHTML = html;
 }
+
 function updateStatus(id, status) {
-  gasCall('updateStatus', [id, status]).then(function() {
-    toast('Status diperbarui');
-    var i = allTrxList.findIndex(function(t) { return t.id === id; });
-    if (i >= 0) allTrxList[i].status = status;
-  }).catch(function(err) { toast(err.message, 'error'); });
+  console.log("updateStatus called - ID:", id, "Status:", status);
+  
+  if (!id || id === "undefined" || id === "") {
+    toast('ID transaksi tidak valid', 'error');
+    return;
+  }
+  
+  if (!confirm("Ubah status transaksi " + id + " menjadi " + status + "?")) {
+    return;
+  }
+  
+  // Cari select element terkait untuk disable (opsional)
+  var buttons = document.querySelectorAll('button[onclick*="' + id + '"]');
+  
+  gasCall('updateStatus', [id, status]).then(function(result) {
+    console.log("GAS Result:", result);
+    if (result && result.ok) {
+      toast('Status berhasil diubah menjadi ' + status, 'success');
+      // Update local array
+      for (var i = 0; i < allTrxList.length; i++) {
+        if (allTrxList[i].id === id) {
+          allTrxList[i].status = status;
+          break;
+        }
+      }
+      // Refresh tabel
+      filterTrx();
+    } else {
+      toast('Gagal: ' + (result && result.error ? result.error : 'Unknown error'), 'error');
+    }
+  }).catch(function(err) {
+    console.error("GAS Error:", err);
+    toast('Gagal update status: ' + err.message, 'error');
+  });
 }
 function deleteTrx(id) {
   if (!confirm('Hapus transaksi ' + id + '?')) return;
